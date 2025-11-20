@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Test</title>
+</head>
+<body>
+    <h1>Auth State Debug</h1>
+    <button onclick="checkAuth()">Check Auth State</button>
+    <button onclick="testLogin()">Test Login API</button>
+    <pre id="output"></pre>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        function checkAuth() {
+            const authData = localStorage.getItem('policypoc.auth');
+            output.textContent = 'localStorage data:\n';
+            if (authData) {
+                const parsed = JSON.parse(authData);
+                output.textContent += JSON.stringify(parsed, null, 2);
+                output.textContent += '\n\nHas token property: ' + ('token' in parsed);
+                output.textContent += '\nToken value exists: ' + !!parsed.token;
+                
+                if (parsed.expiresAtUtc) {
+                    const expires = new Date(parsed.expiresAtUtc);
+                    const now = new Date();
+                    output.textContent += '\n\nExpires: ' + expires.toLocaleString();
+                    output.textContent += '\nNow: ' + now.toLocaleString();
+                    output.textContent += '\nExpired: ' + (expires <= now);
+                    output.textContent += '\nTime until expiry: ' + Math.round((expires - now) / 60000) + ' minutes';
+                }
+            } else {
+                output.textContent += 'No auth data in localStorage!';
+            }
+        }
+        
+        async function testLogin() {
+            output.textContent = 'Testing login API response format...\n';
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@local',
+                        password: 'P@ssword123!'
+                    })
+                });
+                
+                const data = await response.json();
+                output.textContent += 'API Response:\n' + JSON.stringify(data, null, 2);
+                output.textContent += '\n\nProperty names in response:';
+                output.textContent += '\n- Has "token" (lowercase): ' + ('token' in data);
+                output.textContent += '\n- Has "Token" (PascalCase): ' + ('Token' in data);
+                output.textContent += '\n- Has "email": ' + ('email' in data);
+                output.textContent += '\n- Has "Email": ' + ('Email' in data);
+            } catch (error) {
+                output.textContent += 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

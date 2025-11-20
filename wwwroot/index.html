@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PolicyPOC Playground</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" crossorigin="anonymous"></script>
+    <style>
+        html,
+        body {
+            min-height: 100%;
+            background: radial-gradient(circle at top, #f8fafc, #e2e8f0);
+        }
+
+        [x-cloak] {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body class="py-5">
+    <div id="navbar-placeholder"></div>
+
+    <div class="container" style="margin-top: 6rem;" x-data="forecastPage" x-cloak>
+        <div class="row justify-content-between align-items-center mb-4">
+            <div class="col-lg-7">
+                <p class="text-uppercase text-muted fw-semibold mb-1">Playground</p>
+                <h1 class="display-6 fw-bold mb-2">Weather forecast API smoke test</h1>
+                <p class="lead text-secondary mb-0">
+                    Exercise the sample `/WeatherForecast` endpoint while the rest of the UI grows. Use the navigation to jump to login or registration flows.
+                </p>
+            </div>
+            <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
+                <button class="btn btn-outline-primary btn-lg" @click="loadForecast()" :disabled="loading">
+                    <span x-show="!loading">Refresh forecast</span>
+                    <span x-show="loading">Refreshing&hellip;</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="card shadow border-0 mb-4">
+            <div class="card-body p-4 p-md-5">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                    <div>
+                        <h2 class="h4 mb-1">5 day outlook</h2>
+                        <p class="text-muted mb-0">Data pulled directly from the ASP.NET sample controller.</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 text-muted">
+                        <div class="spinner-border text-primary" role="status" x-show="loading">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span class="small" x-text="loading ? 'Contacting API...' : 'Up to date'"></span>
+                    </div>
+                </div>
+
+                <template x-if="error">
+                    <div class="alert alert-danger mb-0" x-text="error"></div>
+                </template>
+
+                <template x-if="!error && forecasts.length === 0 && !loading">
+                    <div class="alert alert-warning mb-0">No forecasts were returned. Hit refresh to try again.</div>
+                </template>
+
+                <div class="table-responsive" x-show="forecasts.length > 0">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Temperature (°C)</th>
+                                <th scope="col">Temperature (°F)</th>
+                                <th scope="col">Summary</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="forecast in forecasts" :key="forecast.date">
+                                <tr>
+                                    <td x-text="formatDate(forecast.date)"></td>
+                                    <td x-text="forecast.temperatureC"></td>
+                                    <td x-text="forecast.temperatureF"></td>
+                                    <td>
+                                        <span class="badge text-bg-info" x-text="forecast.summary"></span>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-info shadow-sm">
+            <p class="mb-1 fw-semibold">Next up</p>
+            <ul class="mb-0 ps-3 text-muted small">
+                <li>Weather data proves out the JSON pipeline before wiring dashboards.</li>
+                <li>Login and Register pages provide dedicated authentication experiences.</li>
+                <li>Everything is served by ASP.NET Core static files, so no extra tooling.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="/js/navbar.js"></script>
+    <script src="/js/shared.js"></script>
+    <script src="/js/index.js"></script>
+</body>
+
+</html>
+

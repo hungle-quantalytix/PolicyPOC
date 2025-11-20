@@ -66,11 +66,15 @@ var app = builder.Build();
 
 await IdentitySeeder.EnsureDatabaseAsync(app.Services, app.Logger);
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapFallbackToFile("index.html");
 
 app.Run();
