@@ -18,6 +18,7 @@ public static class IdentitySeeder
         await context.Database.MigrateAsync(cancellationToken);
         await SeedRolesAsync(scopedServices, logger, cancellationToken);
         await SeedDefaultAdminAsync(scopedServices, logger, cancellationToken);
+        await SeedTestUsersAsync(scopedServices, logger, cancellationToken);
     }
 
     private static async Task SeedRolesAsync(IServiceProvider services, ILogger logger, CancellationToken cancellationToken)
@@ -91,6 +92,71 @@ public static class IdentitySeeder
                 }
             }
         }
+    }
+
+    private static async Task SeedTestUsersAsync(IServiceProvider services, ILogger logger, CancellationToken cancellationToken)
+    {
+        var configuration = services.GetRequiredService<IConfiguration>();
+        var testUsersSection = configuration.GetSection("Identity:TestUsers");
+        var testUsers = testUsersSection.Get<TestUserConfig[]>() ?? [];
+
+        if (testUsers.Length == 0)
+        {
+            return;
+        }
+
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+
+        foreach (var testUser in testUsers)
+        {
+            if (string.IsNullOrWhiteSpace(testUser.Email) || string.IsNullOrWhiteSpace(testUser.Password))
+            {
+                continue;
+            }
+
+            var existingUser = await userManager.FindByEmailAsync(testUser.Email);
+            if (existingUser is not null)
+            {
+                continue;
+            }
+
+            var user = new ApplicationUser
+            {
+                Email = testUser.Email,
+                UserName = testUser.Email,
+                EmailConfirmed = true,
+                DisplayName = testUser.DisplayName ?? testUser.Email
+            };
+
+            var createResult = await userManager.CreateAsync(user, testUser.Password);
+            if (!createResult.Succeeded)
+            {
+                logger.LogError("Failed creating test user {Email}: {Errors}", testUser.Email, string.Join(",", createResult.Errors.Select(e => e.Description)));
+                continue;
+            }
+
+            foreach (var role in testUser.Roles ?? [])
+            {
+                if (!await userManager.IsInRoleAsync(user, role))
+                {
+                    var roleResult = await userManager.AddToRoleAsync(user, role);
+                    if (!roleResult.Succeeded)
+                    {
+                        logger.LogError("Failed assigning role {Role} to test user {Email}: {Errors}", role, testUser.Email, string.Join(",", roleResult.Errors.Select(e => e.Description)));
+                    }
+                }
+            }
+
+            logger.LogInformation("Seeded test user {Email} with roles {Roles}", testUser.Email, string.Join(", ", testUser.Roles ?? []));
+        }
+    }
+
+    private class TestUserConfig
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string? DisplayName { get; set; }
+        public string[] Roles { get; set; } = [];
     }
 }
 

@@ -20,7 +20,8 @@
             token: payload.token,
             displayName: payload.displayName ?? payload.email ?? 'User',
             email: payload.email ?? '',
-            expiresAtUtc: payload.expiresAtUtc ?? null
+            expiresAtUtc: payload.expiresAtUtc ?? null,
+            roles: payload.roles ?? []
         };
     };
 
@@ -92,6 +93,7 @@
         const loginLink = nav.querySelector('[data-auth-link="login"]');
         const registerLink = nav.querySelector('[data-auth-link="register"]');
         const avatar = nav.querySelector('[data-auth-avatar]');
+        const adminMenuItems = nav.querySelectorAll('[data-auth-adminmenu]');
         const nameEl = nav.querySelector('[data-auth-name]');
         const emailEl = nav.querySelector('[data-auth-email]');
         const initialsEl = nav.querySelector('[data-avatar-initials]');
@@ -108,6 +110,16 @@
             avatar.classList.toggle('d-none', !loggedIn);
         }
 
+        // Show admin menu items for users with Administrator, SuperAdmin, or Lender Admin role
+        if (adminMenuItems.length > 0) {
+            const isAdminUser = loggedIn && auth?.roles?.some(role => 
+                role === 'Administrator' || role === 'SuperAdmin'
+            );
+            adminMenuItems.forEach(item => {
+                item.classList.toggle('d-none', !isAdminUser);
+            });
+        }
+
         if (loggedIn && auth) {
             nameEl && (nameEl.textContent = auth.displayName ?? 'User');
             emailEl && (emailEl.textContent = auth.email ?? '');
@@ -117,6 +129,11 @@
             emailEl && (emailEl.textContent = 'Not signed in');
             initialsEl && (initialsEl.textContent = '?');
         }
+
+        // Attach logout button event listener
+        nav.querySelectorAll('[data-logout]').forEach((btn) => {
+            btn.addEventListener('click', logout);
+        });
     };
 
     const logout = () => {
@@ -126,9 +143,6 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         applyNavState();
-        document.querySelectorAll('[data-logout]').forEach((btn) => {
-            btn.addEventListener('click', logout);
-        });
     });
 
     window.PolicyPOC = window.PolicyPOC ?? {};

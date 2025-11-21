@@ -8,7 +8,7 @@ namespace PolicyPOC.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Administrator,SuperAdmin")]
 public class RolesController(
     RoleManager<IdentityRole> roleManager,
     UserManager<ApplicationUser> userManager,

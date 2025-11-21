@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>User Management - PolicyPOC</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" crossorigin="anonymous"></script>
+    <style>
+        html,
+        body {
+            min-height: 100%;
+            background: radial-gradient(circle at top, #f8fafc, #e2e8f0);
+        }
+
+        [x-cloak] {
+            display: none !important;
+        }
+
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1rem;
+            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .role-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+    </style>
+</head>
+
+<body class="py-5">
+    <div id="navbar-placeholder"></div>
+
+    <div class="container" style="margin-top: 6rem;" x-data="usersPage" x-cloak>
+        <div class="row justify-content-between align-items-center mb-4">
+            <div class="col-lg-8">
+                <p class="text-uppercase text-muted fw-semibold mb-1">Administration</p>
+                <h1 class="display-6 fw-bold mb-2">User Management</h1>
+                <p class="lead text-secondary mb-0">
+                    View all users and manage their role assignments to control application access.
+                </p>
+            </div>
+            <div class="col-lg-4 text-lg-end mt-4 mt-lg-0">
+                <button class="btn btn-primary btn-lg me-2" @click="openCreateUserModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-person-plus me-1" viewBox="0 0 16 16" style="vertical-align: text-bottom;">
+                        <path d="M6 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H1s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C9.516 10.68 8.289 10 6 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z"/>
+                        <path fill-rule="evenodd" d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5"/>
+                    </svg>
+                    Create User
+                </button>
+                <button class="btn btn-outline-primary btn-lg" @click="loadData()" :disabled="loading">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-arrow-clockwise me-1" viewBox="0 0 16 16" style="vertical-align: text-bottom;">
+                        <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"/>
+                        <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"/>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Success Alert -->
+        <div class="alert alert-success alert-dismissible fade show" role="alert" x-show="successMessage" x-transition>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-check-circle-fill me-2" viewBox="0 0 16 16" style="vertical-align: text-bottom;">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+            </svg>
+            <span x-text="successMessage"></span>
+            <button type="button" class="btn-close" @click="successMessage = ''"></button>
+        </div>
+
+        <!-- Error Alert -->
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" x-show="errorMessage" x-transition>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-exclamation-triangle-fill me-2" viewBox="0 0 16 16" style="vertical-align: text-bottom;">
+                <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
+            </svg>
+            <span x-text="errorMessage"></span>
+            <button type="button" class="btn-close" @click="errorMessage = ''"></button>
+        </div>
+
+        <!-- Users List Card -->
+        <div class="card shadow border-0 mb-4">
+            <div class="card-body p-4 p-md-5">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                    <div>
+                        <h2 class="h4 mb-1">All Users</h2>
+                        <p class="text-muted mb-0">Manage user accounts and role assignments.</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 text-muted">
+                        <div class="spinner-border text-primary" role="status" x-show="loading">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <span class="small" x-text="loading ? 'Loading users...' : `${users.length} user(s)`"></span>
+                    </div>
+                </div>
+
+                <template x-if="!loading && users.length === 0">
+                    <div class="alert alert-warning mb-0">No users found.</div>
+                </template>
+
+                <div class="table-responsive" x-show="users.length > 0">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">User</th>
+                                <th scope="col">Email</th>
+                                <th scope="col">Assigned Roles</th>
+                                <th scope="col" class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="user in users" :key="user.id">
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="user-avatar" x-text="getInitials(user.displayName || user.email)"></div>
+                                            <div>
+                                                <div class="fw-semibold" x-text="user.displayName || 'No Name'"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted" x-text="user.email"></span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            <template x-if="user.roles && user.roles.length > 0">
+                                                <template x-for="role in user.roles" :key="role">
+                                                    <span class="badge bg-primary role-badge d-inline-flex align-items-center gap-1">
+                                                        <span x-text="role"></span>
+                                                        <button 
+                                                            type="button" 
+                                                            class="btn-close btn-close-white" 
+                                                            style="font-size: 0.6rem; padding: 0;"
+                                                            @click="removeRole(user, role)"
+                                                            :disabled="removingRole"
+                                                            title="Remove role">
+                                                        </button>
+                                                    </span>
+                                                </template>
+                                            </template>
+                                            <template x-if="!user.roles || user.roles.length === 0">
+                                                <span class="badge bg-secondary role-badge">No roles</span>
+                                            </template>
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        <button 
+                                            class="btn btn-sm btn-outline-primary" 
+                                            @click="openAssignRoleModal(user)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-lg" viewBox="0 0 16 16">
+                                                <path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/>
+                                            </svg>
+                                            Assign Role
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="alert alert-info shadow-sm">
+            <p class="mb-1 fw-semibold">About User Management</p>
+            <ul class="mb-0 ps-3 text-muted small">
+                <li>Create users directly from this page or users can self-register through the system.</li>
+                <li>Assign roles to users to grant them specific permissions and access levels.</li>
+                <li>A user can have multiple roles, and roles can be removed by clicking the × on the badge.</li>
+                <li>Manage available roles from the <a href="/roles.html" class="alert-link">Role Management</a> page.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Create User Modal -->
+    <div class="modal fade" :class="{ 'show d-block': showCreateModal }" tabindex="-1" x-show="showCreateModal" x-cloak>
+        <div class="modal-backdrop fade" :class="{ 'show': showCreateModal }" @click="closeCreateModal()"></div>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <div>
+                        <h5 class="modal-title fw-bold">Create New User</h5>
+                        <p class="text-muted small mb-0">Add a new user to the system</p>
+                    </div>
+                    <button type="button" class="btn-close" @click="closeCreateModal()"></button>
+                </div>
+                <form @submit.prevent="createUser()">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="userEmail" class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                            <input 
+                                type="email" 
+                                class="form-control form-control-lg" 
+                                id="userEmail" 
+                                x-model="newUser.email"
+                                placeholder="user@example.com"
+                                required
+                                :disabled="creatingUser">
+                        </div>
+                        <div class="mb-3">
+                            <label for="userDisplayName" class="form-label fw-semibold">Display Name</label>
+                            <input 
+                                type="text" 
+                                class="form-control form-control-lg" 
+                                id="userDisplayName" 
+                                x-model="newUser.displayName"
+                                placeholder="John Doe"
+                                :disabled="creatingUser">
+                            <div class="form-text">Optional. If not provided, email will be used.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="userPassword" class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+                            <input 
+                                type="password" 
+                                class="form-control form-control-lg" 
+                                id="userPassword" 
+                                x-model="newUser.password"
+                                placeholder="Minimum 6 characters"
+                                minlength="6"
+                                required
+                                :disabled="creatingUser">
+                            <div class="form-text">Must be at least 6 characters long.</div>
+                        </div>
+                        <div class="alert alert-danger mb-0" x-show="createError" x-text="createError"></div>
+                    </div>
+                    <div class="modal-footer border-top-0">
+                        <button type="button" class="btn btn-secondary" @click="closeCreateModal()" :disabled="creatingUser">Cancel</button>
+                        <button type="submit" class="btn btn-primary" :disabled="creatingUser">
+                            <span x-show="!creatingUser">Create User</span>
+                            <span x-show="creatingUser">Creating...</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Role Modal -->
+    <div class="modal fade" :class="{ 'show d-block': showAssignModal }" tabindex="-1" x-show="showAssignModal" x-cloak>
+        <div class="modal-backdrop fade" :class="{ 'show': showAssignModal }" @click="closeAssignModal()"></div>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <div>
+                        <h5 class="modal-title fw-bold">Assign Role</h5>
+                        <p class="text-muted small mb-0" x-show="selectedUser" x-text="`Assign a role to ${selectedUser?.displayName || selectedUser?.email || 'user'}`"></p>
+                    </div>
+                    <button type="button" class="btn-close" @click="closeAssignModal()"></button>
+                </div>
+                <form @submit.prevent="assignRole()">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="roleSelect" class="form-label fw-semibold">Select Role</label>
+                            <select 
+                                class="form-select form-select-lg" 
+                                id="roleSelect" 
+                                x-model="selectedRole"
+                                required
+                                :disabled="assigningRole || availableRolesForUser.length === 0">
+                                <option value="">-- Choose a role --</option>
+                                <template x-for="role in availableRolesForUser" :key="role">
+                                    <option :value="role" x-text="role"></option>
+                                </template>
+                            </select>
+                            <div class="form-text" x-show="availableRolesForUser.length === 0">
+                                This user already has all available roles, or no roles exist in the system.
+                            </div>
+                        </div>
+                        <div class="alert alert-danger mb-0" x-show="assignError" x-text="assignError"></div>
+                    </div>
+                    <div class="modal-footer border-top-0">
+                        <button type="button" class="btn btn-secondary" @click="closeAssignModal()" :disabled="assigningRole">Cancel</button>
+                        <button type="submit" class="btn btn-primary" :disabled="assigningRole || !selectedRole || availableRolesForUser.length === 0">
+                            <span x-show="!assigningRole">Assign Role</span>
+                            <span x-show="assigningRole">Assigning...</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+    <script src="/js/navbar.js"></script>
+    <script src="/js/shared.js"></script>
+    <script src="/js/users.js"></script>
+</body>
+
+</html>
+
