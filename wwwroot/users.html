@@ -8,6 +8,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@1.9.12" crossorigin="anonymous"></script>
     <style>
         html,
         body {
@@ -36,11 +37,49 @@
             font-size: 0.75rem;
             padding: 0.25rem 0.5rem;
         }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #6c757d;
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+        }
+
+        .password-toggle:hover {
+            color: #495057;
+        }
+
+        .password-toggle:focus {
+            outline: none;
+            color: #0d6efd;
+        }
+
+        .password-input-wrapper {
+            position: relative;
+        }
+
+        .password-input-wrapper input {
+            padding-right: 45px;
+        }
     </style>
 </head>
 
 <body class="py-5">
-    <div id="navbar-placeholder"></div>
+    <div hx-get="/navbar.html" 
+         hx-trigger="load" 
+         hx-swap="innerHTML"
+         hx-on::after-swap="window.PolicyPOC?.auth?.applyNavState()">
+    </div>
 
     <div class="container" style="margin-top: 6rem;" x-data="usersPage" x-cloak>
         <div class="row justify-content-between align-items-center mb-4">
@@ -184,7 +223,7 @@
     </div>
 
     <!-- Create User Modal -->
-    <div class="modal fade" :class="{ 'show d-block': showCreateModal }" tabindex="-1" x-show="showCreateModal" x-cloak>
+    <div class="modal fade" :class="{ 'show d-block': showCreateModal }" tabindex="-1" x-show="showCreateModal" x-cloak x-data="{ showPasswordCreate: false }">
         <div class="modal-backdrop fade" :class="{ 'show': showCreateModal }" @click="closeCreateModal()"></div>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content shadow-lg">
@@ -221,15 +260,33 @@
                         </div>
                         <div class="mb-3">
                             <label for="userPassword" class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
-                            <input 
-                                type="password" 
-                                class="form-control form-control-lg" 
-                                id="userPassword" 
-                                x-model="newUser.password"
-                                placeholder="Minimum 6 characters"
-                                minlength="6"
-                                required
-                                :disabled="creatingUser">
+                            <div class="password-input-wrapper">
+                                <input 
+                                    :type="showPasswordCreate ? 'text' : 'password'" 
+                                    class="form-control form-control-lg" 
+                                    id="userPassword" 
+                                    x-model="newUser.password"
+                                    placeholder="Minimum 6 characters"
+                                    minlength="6"
+                                    required
+                                    :disabled="creatingUser">
+                                <button 
+                                    type="button" 
+                                    class="password-toggle" 
+                                    @click="showPasswordCreate = !showPasswordCreate"
+                                    :aria-label="showPasswordCreate ? 'Hide password' : 'Show password'"
+                                    tabindex="-1">
+                                    <svg x-show="!showPasswordCreate" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                                        <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/>
+                                        <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/>
+                                    </svg>
+                                    <svg x-show="showPasswordCreate" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" x-cloak>
+                                        <path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7 7 0 0 0-2.79.588l.77.771A6 6 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755q-.247.248-.517.486z"/>
+                                        <path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829"/>
+                                        <path d="M3.35 5.47q-.27.24-.518.487A13 13 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7 7 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12z"/>
+                                    </svg>
+                                </button>
+                            </div>
                             <div class="form-text">Must be at least 6 characters long.</div>
                         </div>
                         <div class="alert alert-danger mb-0" x-show="createError" x-text="createError"></div>
@@ -292,7 +349,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
-    <script src="/js/navbar.js"></script>
     <script src="/js/shared.js"></script>
     <script src="/js/users.js"></script>
 </body>
