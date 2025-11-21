@@ -93,6 +93,7 @@
         const loginLink = nav.querySelector('[data-auth-link="login"]');
         const registerLink = nav.querySelector('[data-auth-link="register"]');
         const avatar = nav.querySelector('[data-auth-avatar]');
+        const authMenuItems = nav.querySelectorAll('[data-auth-menu]');
         const adminMenuItems = nav.querySelectorAll('[data-auth-adminmenu]');
         const nameEl = nav.querySelector('[data-auth-name]');
         const emailEl = nav.querySelector('[data-auth-email]');
@@ -108,6 +109,13 @@
 
         if (avatar) {
             avatar.classList.toggle('d-none', !loggedIn);
+        }
+
+        // Show menu items for all authenticated users
+        if (authMenuItems.length > 0) {
+            authMenuItems.forEach(item => {
+                item.classList.toggle('d-none', !loggedIn);
+            });
         }
 
         // Show admin menu items for users with Administrator, SuperAdmin, or Lender Admin role
