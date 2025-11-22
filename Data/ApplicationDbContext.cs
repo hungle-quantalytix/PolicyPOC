@@ -13,6 +13,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     }
 
     public DbSet<Loan> Loans { get; set; }
+    public DbSet<Resource> Resources { get; set; }
+    public DbSet<Policy> Policies { get; set; }
+    public DbSet<PolicyResource> PolicyResources { get; set; }
 }
 
 

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PolicyPOC.Data;
 
@@ -10,9 +11,11 @@ using PolicyPOC.Data;
 namespace PolicyPOC.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251121100823_AddResourcesTable")]
+    partial class AddResourcesTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
@@ -312,46 +315,6 @@ namespace PolicyPOC.Migrations
                     b.ToTable("Loans");
                 });
 
-            modelBuilder.Entity("PolicyPOC.Models.Policy", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("PolicyData")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Policies");
-                });
-
-            modelBuilder.Entity("PolicyPOC.Models.PolicyResource", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("PolicyId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ResourceColumns")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ResourceName")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PolicyId");
-
-                    b.ToTable("PolicyResources");
-                });
-
             modelBuilder.Entity("PolicyPOC.Models.Resource", b =>
                 {
                     b.Property<Guid>("Id")
@@ -416,22 +379,6 @@ namespace PolicyPOC.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("PolicyPOC.Models.PolicyResource", b =>
-                {
-                    b.HasOne("PolicyPOC.Models.Policy", "Policy")
-                        .WithMany("PolicyResources")
-                        .HasForeignKey("PolicyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Policy");
-                });
-
-            modelBuilder.Entity("PolicyPOC.Models.Policy", b =>
-                {
-                    b.Navigation("PolicyResources");
                 });
 #pragma warning restore 612, 618
         }
