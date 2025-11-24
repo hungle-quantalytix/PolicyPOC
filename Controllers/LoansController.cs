@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PolicyPOC.Attributes;
 using PolicyPOC.Contracts.Loans;
 using PolicyPOC.Data;
 using PolicyPOC.Models;
@@ -20,6 +21,7 @@ public class LoansController(
 
     // GET: api/Loans
     [HttpGet]
+    [Policy("Loan", "Read")]
     public async Task<ActionResult<IEnumerable<LoanResponse>>> GetLoans()
     {
         var loans = await _context.Loans
@@ -62,6 +64,7 @@ public class LoansController(
 
     // GET: api/Loans/{id}
     [HttpGet("{id}")]
+    [Policy("Loan", "Read")]
     public async Task<ActionResult<LoanResponse>> GetLoan(Guid id)
     {
         var loan = await _context.Loans.FindAsync(id);
@@ -109,6 +112,7 @@ public class LoansController(
 
     // POST: api/Loans
     [HttpPost]
+    [Policy("Loan", "Write")]
     public async Task<ActionResult<LoanResponse>> CreateLoan([FromBody] CreateLoanRequest request)
     {
         if (!ModelState.IsValid)
@@ -193,6 +197,7 @@ public class LoansController(
 
     // PUT: api/Loans/{id}
     [HttpPut("{id}")]
+    [Policy("Loan", "Write")]
     public async Task<IActionResult> UpdateLoan(Guid id, [FromBody] UpdateLoanRequest request)
     {
         if (!ModelState.IsValid)
@@ -255,6 +260,7 @@ public class LoansController(
 
     // DELETE: api/Loans/{id}
     [HttpDelete("{id}")]
+    [Policy("Loan", "Delete")]
     public async Task<IActionResult> DeleteLoan(Guid id)
     {
         var loan = await _context.Loans.FindAsync(id);

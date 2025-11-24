@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using PolicyPOC.Authorization;
 using PolicyPOC.Data;
 using PolicyPOC.Models;
 using PolicyPOC.Options;
@@ -73,6 +74,7 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<QtxPolicyMiddleware>();
 
 app.MapControllers();
 app.MapFallbackToFile("index.html");
