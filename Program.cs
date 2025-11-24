@@ -1,9 +1,11 @@
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PolicyPOC.Authorization;
+using PolicyPOC.Converters;
 using PolicyPOC.Data;
 using PolicyPOC.Models;
 using PolicyPOC.Options;
@@ -60,7 +62,12 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.Converters.Add(new PolicyRuleConverter());
+    });
 builder.Services.AddEndpointsApiExplorer();
 
 var app = builder.Build();
