@@ -5,6 +5,8 @@ using PolicyPOC.Attributes;
 using PolicyPOC.Contracts.Loans;
 using PolicyPOC.Data;
 using PolicyPOC.Models;
+using PolicyPOC.Extensions;
+using PolicyPOC.Services;
 using System.Security.Claims;
 
 namespace PolicyPOC.Controllers;
@@ -14,17 +16,34 @@ namespace PolicyPOC.Controllers;
 [Authorize]
 public class LoansController(
     ApplicationDbContext context,
-    ILogger<LoansController> logger) : ControllerBase
+    ILogger<LoansController> logger,
+    ISecurityContextService securityContextService) : ControllerBase
 {
     private readonly ApplicationDbContext _context = context;
     private readonly ILogger<LoansController> _logger = logger;
+    private readonly ISecurityContextService _securityContextService = securityContextService;
 
     // GET: api/Loans
     [HttpGet]
     [Policy("Loan", "Read")]
     public async Task<ActionResult<IEnumerable<LoanResponse>>> GetLoans()
     {
-        var loans = await _context.Loans
+        // Start with base query
+        IQueryable<Loan> query = _context.Loans;
+
+        // Apply row-level security rules from security context
+        // This will filter the results based on policies like "resource.Department = user.Department"
+        query = query.ApplyRowLevelSecurity(_securityContextService);
+
+        // Get PII columns to mask
+        var piiColumns = _securityContextService.GetPiiColumns("Loan");
+        var hasPiiRestrictions = piiColumns.Any();
+
+        _logger.LogInformation("Fetching loans with {RLSRules} row-level security rules and {PiiColumns} PII columns to mask",
+            _securityContextService.SecurityContext.RowLevelSecurityRules.Count,
+            piiColumns.Length);
+
+        var loans = await query
             .Select(l => new LoanResponse
             {
                 LoanId = l.LoanId,
@@ -58,6 +77,12 @@ public class LoansController(
                 LastModifiedDate = l.LastModifiedDate
             })
             .ToListAsync();
+
+        // Apply PII masking to each loan response
+        if (hasPiiRestrictions)
+        {
+            loans = loans.Select(loan => loan.MaskPiiFields(_securityContextService, "Loan")).ToList();
+        }
 
         return Ok(loans);
     }

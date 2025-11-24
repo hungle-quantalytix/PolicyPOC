@@ -34,6 +34,9 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
+// Register security context service as scoped (per request)
+builder.Services.AddScoped<ISecurityContextService, SecurityContextService>();
+
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
