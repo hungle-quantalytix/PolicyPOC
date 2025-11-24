@@ -13,5 +13,6 @@ public class CreateUserRequest
     public string Password { get; set; } = string.Empty;
 
     public string? DisplayName { get; set; }
+    public string? Department { get; set; }
 }
 

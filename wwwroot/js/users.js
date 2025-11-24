@@ -10,6 +10,7 @@ document.addEventListener('alpine:init', () => {
         newUser: {
             email: '',
             displayName: '',
+            department: '',
             password: ''
         },
         creatingUser: false,
@@ -128,6 +129,7 @@ document.addEventListener('alpine:init', () => {
             this.newUser = {
                 email: '',
                 displayName: '',
+                department: '',
                 password: ''
             };
             this.createError = '';
@@ -139,6 +141,7 @@ document.addEventListener('alpine:init', () => {
             this.newUser = {
                 email: '',
                 displayName: '',
+                department: '',
                 password: ''
             };
             this.createError = '';
@@ -169,6 +172,7 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify({
                         email: this.newUser.email,
                         displayName: this.newUser.displayName || null,
+                        department: this.newUser.department || null,
                         password: this.newUser.password
                     })
                 });

@@ -34,7 +34,9 @@ public class PoliciesController(
                     Id = pr.Id,
                     PolicyId = pr.PolicyId,
                     ResourceName = pr.ResourceName,
-                    ResourceColumns = pr.ResourceColumns
+                    ResourceColumns = pr.ResourceColumns,
+                    Action = pr.Action,
+                    Effect = pr.Effect
                 }).ToList()
             })
             .ToListAsync();
@@ -65,7 +67,9 @@ public class PoliciesController(
                 Id = pr.Id,
                 PolicyId = pr.PolicyId,
                 ResourceName = pr.ResourceName,
-                ResourceColumns = pr.ResourceColumns
+                ResourceColumns = pr.ResourceColumns,
+                Action = pr.Action,
+                Effect = pr.Effect
             }).ToList()
         };
 
@@ -191,6 +195,8 @@ public class PoliciesController(
             PolicyId = request.PolicyId,
             ResourceName = request.ResourceName,
             ResourceColumns = request.ResourceColumns,
+            Action = request.Action,
+            Effect = request.Effect,
             Policy = policy
         };
 
@@ -205,7 +211,9 @@ public class PoliciesController(
             Id = policyResource.Id,
             PolicyId = policyResource.PolicyId,
             ResourceName = policyResource.ResourceName,
-            ResourceColumns = policyResource.ResourceColumns
+            ResourceColumns = policyResource.ResourceColumns,
+            Action = policyResource.Action,
+            Effect = policyResource.Effect
         };
 
         return Ok(response);
@@ -248,7 +256,9 @@ public class PoliciesController(
                 Id = pr.Id,
                 PolicyId = pr.PolicyId,
                 ResourceName = pr.ResourceName,
-                ResourceColumns = pr.ResourceColumns
+                ResourceColumns = pr.ResourceColumns,
+                Action = pr.Action,
+                Effect = pr.Effect
             })
             .ToListAsync();
 

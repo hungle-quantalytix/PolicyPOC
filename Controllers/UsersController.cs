@@ -26,6 +26,7 @@ public class UsersController(
                 u.Id,
                 u.Email,
                 u.DisplayName,
+                u.Department,
                 u.UserName
             })
             .ToListAsync();
@@ -42,6 +43,7 @@ public class UsersController(
                 user.Id,
                 user.Email,
                 user.DisplayName,
+                user.Department,
                 user.UserName,
                 Roles = roles.ToArray()
             });
@@ -69,7 +71,8 @@ public class UsersController(
             Email = request.Email,
             UserName = request.Email,
             EmailConfirmed = true,
-            DisplayName = request.DisplayName ?? request.Email
+            DisplayName = request.DisplayName ?? request.Email,
+            Department = request.Department
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);
@@ -84,7 +87,7 @@ public class UsersController(
         }
 
         _logger.LogInformation("User {Email} created successfully", request.Email);
-        return CreatedAtAction(nameof(GetUsers), new { id = user.Id }, new { user.Id, user.Email, user.DisplayName });
+        return CreatedAtAction(nameof(GetUsers), new { id = user.Id }, new { user.Id, user.Email, user.DisplayName, user.Department });
     }
 
     [HttpPost("{userId}/roles/{roleName}")]

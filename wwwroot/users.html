@@ -152,6 +152,7 @@
                             <tr>
                                 <th scope="col">User</th>
                                 <th scope="col">Email</th>
+                                <th scope="col">Department</th>
                                 <th scope="col">Assigned Roles</th>
                                 <th scope="col" class="text-end">Actions</th>
                             </tr>
@@ -169,6 +170,9 @@
                                     </td>
                                     <td>
                                         <span class="text-muted" x-text="user.email"></span>
+                                    </td>
+                                    <td>
+                                        <span class="text-muted" x-text="user.department || 'N/A'"></span>
                                     </td>
                                     <td>
                                         <div class="d-flex flex-wrap gap-1">
@@ -257,6 +261,17 @@
                                 placeholder="John Doe"
                                 :disabled="creatingUser">
                             <div class="form-text">Optional. If not provided, email will be used.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="userDepartment" class="form-label fw-semibold">Department</label>
+                            <input 
+                                type="text" 
+                                class="form-control form-control-lg" 
+                                id="userDepartment" 
+                                x-model="newUser.department"
+                                placeholder="Engineering"
+                                :disabled="creatingUser">
+                            <div class="form-text">Optional. The user's department or team.</div>
                         </div>
                         <div class="mb-3">
                             <label for="userPassword" class="form-label fw-semibold">Password <span class="text-danger">*</span></label>

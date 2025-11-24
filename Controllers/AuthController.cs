@@ -41,7 +41,8 @@ public class AuthController(
         {
             UserName = request.Email,
             Email = request.Email,
-            DisplayName = request.DisplayName
+            DisplayName = request.DisplayName,
+            Department = request.Department
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);
@@ -90,6 +91,7 @@ public class AuthController(
         {
             Email = user.Email ?? string.Empty,
             DisplayName = user.DisplayName,
+            Department = user.Department,
             Roles = roles.ToArray(),
             Token = token,
             ExpiresAtUtc = expiresAtUtc

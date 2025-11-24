@@ -20,7 +20,9 @@ document.addEventListener('alpine:init', () => {
         },
         assignFormData: {
             resourceName: '',
-            resourceColumns: ''
+            resourceColumns: '',
+            action: '',
+            effect: ''
         },
         formError: '',
         assignFormError: '',
@@ -190,7 +192,9 @@ document.addEventListener('alpine:init', () => {
             this.policyToAssign = policy;
             this.assignFormData = {
                 resourceName: '',
-                resourceColumns: ''
+                resourceColumns: '',
+                action: '',
+                effect: ''
             };
             this.assignFormError = '';
             this.showAssignModal = true;
@@ -223,7 +227,9 @@ document.addEventListener('alpine:init', () => {
                     body: JSON.stringify({
                         policyId: this.policyToAssign.id,
                         resourceName: this.assignFormData.resourceName,
-                        resourceColumns: this.assignFormData.resourceColumns || null
+                        resourceColumns: this.assignFormData.resourceColumns || null,
+                        action: this.assignFormData.action || null,
+                        effect: this.assignFormData.effect || null
                     })
                 });
 

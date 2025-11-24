@@ -268,6 +268,22 @@
                                 <small class="form-text text-muted">Comma-separated list of column names</small>
                             </div>
 
+                            <div class="mb-3">
+                                <label class="form-label">Action (Optional)</label>
+                                <input type="text" class="form-control" x-model="assignFormData.action" placeholder="e.g., read, write, delete">
+                                <small class="form-text text-muted">The action to be performed on the resource</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Effect (Optional)</label>
+                                <select class="form-select" x-model="assignFormData.effect">
+                                    <option value="">Select an effect</option>
+                                    <option value="Allow">Allow</option>
+                                    <option value="Deny">Deny</option>
+                                </select>
+                                <small class="form-text text-muted">Whether to allow or deny the action</small>
+                            </div>
+
                             <div x-show="assignFormError" class="alert alert-danger mt-3" x-text="assignFormError"></div>
                         </form>
                     </div>

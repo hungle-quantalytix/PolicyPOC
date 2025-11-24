@@ -13,5 +13,11 @@ public class AssignPolicyRequest
 
     [MaxLength(500)]
     public string? ResourceColumns { get; set; }
+
+    [MaxLength(100)]
+    public string? Action { get; set; }
+
+    [MaxLength(100)]
+    public string? Effect { get; set; }
 }
 

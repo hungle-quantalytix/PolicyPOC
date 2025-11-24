@@ -14,7 +14,9 @@ public class PolicyResource
     public required Guid Id { get; set; }
     public required Guid PolicyId { get; set; }
     public string? ResourceName { get; set; }
-    public string? ResourceColumns { get; set; } 
+    public string? ResourceColumns { get; set; }
+    public string? Action { get; set; }
+    public string? Effect { get; set; }
 
     public required Policy Policy { get; set; }
 }
