@@ -97,20 +97,20 @@ public class QtxPolicyMiddleware
             _logger.LogInformation(policyResource.Policy.PolicyData);
 
             // Handle PII policies (policies with ResourceColumns)
-            if (!string.IsNullOrEmpty(policyResource.ResourceColumns))
-            {
-                var columns = policyResource.ResourceColumns.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                securityContextService.AddPiiPolicyRule(new PiiPolicyRule
-                {
-                    ResourceName = policyResource.ResourceName ?? string.Empty,
-                    Columns = columns,
-                    Action = policyResource.Action ?? string.Empty
-                });
-                _logger.LogInformation(
-                    "PII policy detected for resource {Resource} - Columns: [{Columns}]",
-                    policyResource.ResourceName, string.Join(", ", columns));
-                continue;
-            }
+            // if (!string.IsNullOrEmpty(policyResource.ResourceColumns))
+            // {
+            //     var columns = policyResource.ResourceColumns.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            //     securityContextService.AddPiiPolicyRule(new PiiPolicyRule
+            //     {
+            //         ResourceName = policyResource.ResourceName ?? string.Empty,
+            //         Columns = columns,
+            //         Action = policyResource.Action ?? string.Empty
+            //     });
+            //     _logger.LogInformation(
+            //         "PII policy detected for resource {Resource} - Columns: [{Columns}]",
+            //         policyResource.ResourceName, string.Join(", ", columns));
+            //     continue;
+            // }
 
             PolicyRule? policyRules = null;
             try
@@ -137,9 +137,6 @@ public class QtxPolicyMiddleware
             
             _logger.LogInformation("Policy evaluation result: {Result}", policyResult);
             
-            // If this policy matches (user conditions pass), we need to:
-            // 1. Grant access at middleware level
-            // 2. Add any row-level security rules from this policy
             if (policyResult)
             {
                 policyMatched = true;
@@ -152,14 +149,9 @@ public class QtxPolicyMiddleware
                         "Adding RLS rule from matched policy: {Field} {Operator} {Value}",
                         rlsRule.ResourceField, rlsRule.Operator, rlsRule.Value);
                 }
-                
-                // Note: We continue checking other policies for OR logic
-                // Multiple policies may match and contribute RLS rules
             }
         }
         
-        // Add all collected RLS rules to the security context
-        // These will be combined with OR logic at the query level
         foreach (var rule in tempRlsRules)
         {
             securityContextService.AddRowLevelSecurityRule(rule);

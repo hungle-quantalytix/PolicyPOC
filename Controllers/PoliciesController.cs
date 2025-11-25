@@ -219,6 +219,66 @@ public class PoliciesController(
         return Ok(response);
     }
 
+    // PUT: api/Policies/assign/{id}
+    [HttpPut("assign/{id}")]
+    public async Task<IActionResult> UpdatePolicyAssignment(Guid id, [FromBody] UpdatePolicyAssignmentRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return ValidationProblem(ModelState);
+        }
+
+        if (id != request.AssignmentId)
+        {
+            return BadRequest(new { message = "Assignment ID in URL does not match the request body." });
+        }
+
+        var policyResource = await _context.PolicyResources.FindAsync(id);
+        if (policyResource == null)
+        {
+            return NotFound(new { message = $"Policy assignment with ID '{id}' not found." });
+        }
+
+        var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? "system";
+
+        // Update only the fields that are provided
+        if (request.ResourceName != null)
+        {
+            policyResource.ResourceName = request.ResourceName;
+        }
+        
+        if (request.ResourceColumns != null)
+        {
+            policyResource.ResourceColumns = request.ResourceColumns;
+        }
+        
+        if (request.Action != null)
+        {
+            policyResource.Action = request.Action;
+        }
+        
+        if (request.Effect != null)
+        {
+            policyResource.Effect = request.Effect;
+        }
+
+        try
+        {
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Policy assignment {Id} updated successfully by {User}", id, userEmail);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            if (!await _context.PolicyResources.AnyAsync(pr => pr.Id == id))
+            {
+                return NotFound(new { message = $"Policy assignment with ID '{id}' not found." });
+            }
+            throw;
+        }
+
+        return NoContent();
+    }
+
     // DELETE: api/Policies/assign/{id}
     [HttpDelete("assign/{id}")]
     public async Task<IActionResult> UnassignPolicy(Guid id)

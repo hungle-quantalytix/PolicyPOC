@@ -169,7 +169,27 @@
                                 <td>
                                     <div class="d-flex flex-wrap gap-1">
                                         <template x-for="pr in policy.policyResources" :key="pr.id">
-                                            <span class="badge bg-info badge-resource" x-text="pr.resourceName"></span>
+                                            <span class="badge bg-info badge-resource d-inline-flex align-items-center gap-1">
+                                                <span x-text="pr.resourceName"></span>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-sm btn-outline-light border-0 p-0 me-1"
+                                                    style="font-size: 0.6rem; width: 16px; height: 16px; line-height: 1;"
+                                                    @click="openUpdateAssignmentModal(policy, pr)"
+                                                    title="Update assignment">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                                                        <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                                                        <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="btn-close btn-close-white"
+                                                    style="font-size: 0.6rem; padding: 0;"
+                                                    @click="confirmUnassign(pr)"
+                                                    title="Remove assignment">
+                                                </button>
+                                            </span>
                                         </template>
                                         <span x-show="!policy.policyResources || policy.policyResources.length === 0" class="text-muted small">None</span>
                                     </div>
@@ -274,7 +294,7 @@
                                 <small class="form-text text-muted">The action to be performed on the resource</small>
                             </div>
 
-                            <div class="mb-3">
+                            <!-- <div class="mb-3">
                                 <label class="form-label">Effect (Optional)</label>
                                 <select class="form-select" x-model="assignFormData.effect">
                                     <option value="">Select an effect</option>
@@ -282,7 +302,7 @@
                                     <option value="Deny">Deny</option>
                                 </select>
                                 <small class="form-text text-muted">Whether to allow or deny the action</small>
-                            </div>
+                            </div> -->
 
                             <div x-show="assignFormError" class="alert alert-danger mt-3" x-text="assignFormError"></div>
                         </form>
@@ -296,6 +316,92 @@
                             <span x-show="assigning">
                                 <span class="spinner-border spinner-border-sm me-1"></span>
                                 Assigning...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Update Assignment Modal -->
+        <div class="modal fade" :class="{ 'show d-block': showUpdateAssignmentModal }" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" x-show="showUpdateAssignmentModal">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Update Policy Assignment</h5>
+                        <button type="button" class="btn-close" @click="closeUpdateAssignmentModal()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form @submit.prevent="submitUpdateAssignmentForm()">
+                            <div class="mb-3">
+                                <label class="form-label">Policy</label>
+                                <input type="text" class="form-control" :value="updateAssignmentPolicy?.description || updateAssignmentPolicy?.id" readonly>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label form-label-required">Resource Name</label>
+                                <input type="text" class="form-control" x-model="updateAssignmentFormData.resourceName" required placeholder="e.g., loans, users">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Resource Columns (Optional)</label>
+                                <input type="text" class="form-control" x-model="updateAssignmentFormData.resourceColumns" placeholder="e.g., id, name, amount">
+                                <small class="form-text text-muted">Comma-separated list of column names</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Action (Optional)</label>
+                                <input type="text" class="form-control" x-model="updateAssignmentFormData.action" placeholder="e.g., read, write, delete">
+                                <small class="form-text text-muted">The action to be performed on the resource</small>
+                            </div>
+
+                            <!-- <div class="mb-3">
+                                <label class="form-label">Effect (Optional)</label>
+                                <input type="text" class="form-control" x-model="updateAssignmentFormData.effect" placeholder="e.g., Allow, Deny">
+                                <small class="form-text text-muted">Whether to allow or deny the action</small>
+                            </div> -->
+
+                            <div x-show="updateAssignmentFormError" class="alert alert-danger mt-3" x-text="updateAssignmentFormError"></div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="closeUpdateAssignmentModal()" :disabled="updatingAssignment">
+                            Cancel
+                        </button>
+                        <button type="button" class="btn btn-primary" @click="submitUpdateAssignmentForm()" :disabled="updatingAssignment">
+                            <span x-show="!updatingAssignment">Update Assignment</span>
+                            <span x-show="updatingAssignment">
+                                <span class="spinner-border spinner-border-sm me-1"></span>
+                                Updating...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unassign Confirmation Modal -->
+        <div class="modal fade" :class="{ 'show d-block': showUnassignModal }" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" x-show="showUnassignModal">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning">
+                        <h5 class="modal-title">Confirm Unassign</h5>
+                        <button type="button" class="btn-close" @click="showUnassignModal = false"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to remove this policy assignment?</p>
+                        <p class="fw-bold" x-text="assignmentToUnassign?.resourceName"></p>
+                        <p class="text-muted small">This will remove the policy from the resource.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="showUnassignModal = false" :disabled="unassigning">
+                            Cancel
+                        </button>
+                        <button type="button" class="btn btn-warning" @click="unassignPolicy()" :disabled="unassigning">
+                            <span x-show="!unassigning">Remove Assignment</span>
+                            <span x-show="unassigning">
+                                <span class="spinner-border spinner-border-sm me-1"></span>
+                                Removing...
                             </span>
                         </button>
                     </div>
