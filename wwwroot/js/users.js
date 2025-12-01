@@ -20,6 +20,7 @@ document.addEventListener('alpine:init', () => {
         assigningRole: false,
         removingRole: false,
         assignError: '',
+        showPasswordCreate: false,
 
         async init() {
             // Ensure user is authenticated
@@ -146,6 +147,7 @@ document.addEventListener('alpine:init', () => {
             };
             this.createError = '';
             this.creatingUser = false;
+            this.showPasswordCreate = false;
         },
 
         async createUser() {
