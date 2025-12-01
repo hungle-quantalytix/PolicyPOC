@@ -14,8 +14,44 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
 
     public DbSet<Loan> Loans { get; set; }
     public DbSet<Resource> Resources { get; set; }
+    public DbSet<Field> Fields { get; set; }
     public DbSet<Policy> Policies { get; set; }
-    public DbSet<PolicyResource> PolicyResources { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // Configure Resource <-> Field one-to-many
+        modelBuilder.Entity<Field>()
+            .HasOne(f => f.Resource)
+            .WithMany(r => r.Fields)
+            .HasForeignKey(f => f.ResourceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Configure Resource <-> Policy many-to-many for ReadPolicies
+        modelBuilder.Entity<Resource>()
+            .HasMany(r => r.ReadPolicies)
+            .WithMany(p => p.ReadResources)
+            .UsingEntity(j => j.ToTable("ResourceReadPolicies"));
+
+        // Configure Resource <-> Policy many-to-many for WritePolicies
+        modelBuilder.Entity<Resource>()
+            .HasMany(r => r.WritePolicies)
+            .WithMany(p => p.WriteResources)
+            .UsingEntity(j => j.ToTable("ResourceWritePolicies"));
+
+        // Configure Field <-> Policy many-to-many for ReadPolicies
+        modelBuilder.Entity<Field>()
+            .HasMany(f => f.ReadPolicies)
+            .WithMany(p => p.ReadFields)
+            .UsingEntity(j => j.ToTable("FieldReadPolicies"));
+
+        // Configure Field <-> Policy many-to-many for WritePolicies
+        modelBuilder.Entity<Field>()
+            .HasMany(f => f.WritePolicies)
+            .WithMany(p => p.WriteFields)
+            .UsingEntity(j => j.ToTable("FieldWritePolicies"));
+    }
 }
 
 

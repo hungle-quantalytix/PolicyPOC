@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PolicyPOC.Data;
 
@@ -10,42 +11,14 @@ using PolicyPOC.Data;
 namespace PolicyPOC.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251201064207_DirectPolicyReferences")]
+    partial class DirectPolicyReferences
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
-
-            modelBuilder.Entity("FieldPolicy", b =>
-                {
-                    b.Property<Guid>("ReadFieldsId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("ReadPoliciesId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("ReadFieldsId", "ReadPoliciesId");
-
-                    b.HasIndex("ReadPoliciesId");
-
-                    b.ToTable("FieldReadPolicies", (string)null);
-                });
-
-            modelBuilder.Entity("FieldPolicy1", b =>
-                {
-                    b.Property<Guid>("WriteFieldsId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("WritePoliciesId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("WriteFieldsId", "WritePoliciesId");
-
-                    b.HasIndex("WritePoliciesId");
-
-                    b.ToTable("FieldWritePolicies", (string)null);
-                });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
@@ -245,29 +218,6 @@ namespace PolicyPOC.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("PolicyPOC.Models.Field", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FieldName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsPublic")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<Guid>("ResourceId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ResourceId");
-
-                    b.ToTable("Fields");
-                });
-
             modelBuilder.Entity("PolicyPOC.Models.Loan", b =>
                 {
                     b.Property<Guid>("LoanId")
@@ -392,6 +342,9 @@ namespace PolicyPOC.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("FieldsJson")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ResourceName")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -429,36 +382,6 @@ namespace PolicyPOC.Migrations
                     b.HasIndex("WriteResourcesId");
 
                     b.ToTable("ResourceWritePolicies", (string)null);
-                });
-
-            modelBuilder.Entity("FieldPolicy", b =>
-                {
-                    b.HasOne("PolicyPOC.Models.Field", null)
-                        .WithMany()
-                        .HasForeignKey("ReadFieldsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PolicyPOC.Models.Policy", null)
-                        .WithMany()
-                        .HasForeignKey("ReadPoliciesId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("FieldPolicy1", b =>
-                {
-                    b.HasOne("PolicyPOC.Models.Field", null)
-                        .WithMany()
-                        .HasForeignKey("WriteFieldsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("PolicyPOC.Models.Policy", null)
-                        .WithMany()
-                        .HasForeignKey("WritePoliciesId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -512,17 +435,6 @@ namespace PolicyPOC.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("PolicyPOC.Models.Field", b =>
-                {
-                    b.HasOne("PolicyPOC.Models.Resource", "Resource")
-                        .WithMany("Fields")
-                        .HasForeignKey("ResourceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Resource");
-                });
-
             modelBuilder.Entity("PolicyResource", b =>
                 {
                     b.HasOne("PolicyPOC.Models.Policy", null)
@@ -551,11 +463,6 @@ namespace PolicyPOC.Migrations
                         .HasForeignKey("WriteResourcesId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("PolicyPOC.Models.Resource", b =>
-                {
-                    b.Navigation("Fields");
                 });
 #pragma warning restore 612, 618
         }

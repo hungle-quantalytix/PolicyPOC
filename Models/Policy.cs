@@ -9,20 +9,17 @@ public class Policy
     public string? Description { get; set; }
     public required string PolicyData { get; set; } // JSON string JSONB in postgres, serialized from PolicyRule
 
-    public required ICollection<PolicyResource> PolicyResources { get; set; }
+    // Navigation properties for many-to-many relationships with Resource
+    // Note: These are the inverse navigation properties
+    public ICollection<Resource> ReadResources { get; set; } = new List<Resource>();
+    public ICollection<Resource> WriteResources { get; set; } = new List<Resource>();
+    
+    // Navigation properties for many-to-many relationships with Field
+    public ICollection<Field> ReadFields { get; set; } = new List<Field>();
+    public ICollection<Field> WriteFields { get; set; } = new List<Field>();
 }
 
-public class PolicyResource
-{
-    public required Guid Id { get; set; }
-    public required Guid PolicyId { get; set; }
-    public string? ResourceName { get; set; }
-    public string? ResourceColumns { get; set; }
-    public string? Action { get; set; }
-    public string? Effect { get; set; }
-
-    public required Policy Policy { get; set; }
-}
+// PolicyResource class removed - now using direct many-to-many relationships
 
 [JsonConverter(typeof(PolicyRuleConverter))]
 public abstract class PolicyRule {}

@@ -61,21 +61,46 @@ public class QtxPolicyMiddleware
             userId, userEmail, string.Join(", ", userRoles),
             policyAttribute.ResourceName, policyAttribute.Action);
 
-        // Query policies from database dynamically
-        var applicablePolicies = await dbContext.PolicyResources
-            .Include(pr => pr.Policy)
-            .Where(pr => pr.ResourceName == policyAttribute.ResourceName
-                      && pr.Action == policyAttribute.Action)
-            .ToListAsync();
+        // Query policies from database dynamically - now using Resource with direct policy references
+        var resource = await dbContext.Resources
+            .Include(r => r.ReadPolicies)
+            .Include(r => r.WritePolicies)
+            .FirstOrDefaultAsync(r => r.ResourceName == policyAttribute.ResourceName);
+
+        // Get applicable policies based on action type
+        var applicablePolicies = policyAttribute.Action?.ToLower() switch
+        {
+            "read" => resource?.ReadPolicies?.ToList() ?? new List<Policy>(),
+            "write" => resource?.WritePolicies?.ToList() ?? new List<Policy>(),
+            _ => new List<Policy>()
+        };
+
+        // DENY BY DEFAULT: If no policies are found, access is denied
+        // Previously: allowed access when no policies existed (commented out below)
+        // if (!applicablePolicies.Any())
+        // {
+        //     _logger.LogInformation(
+        //         "No policies found for resource {Resource} and action {Action} - Access granted",
+        //         policyAttribute.ResourceName, policyAttribute.Action);
+        //
+        //     // If no policies are found, continue to next middleware/endpoint
+        //     await _next(context);
+        //     return;
+        // }
 
         if (!applicablePolicies.Any())
         {
-            _logger.LogInformation(
-                "No policies found for resource {Resource} and action {Action} - Access granted",
+            _logger.LogWarning(
+                "No policies found for resource {Resource} and action {Action} - Access DENIED (deny by default)",
                 policyAttribute.ResourceName, policyAttribute.Action);
 
-            // If no policies are found, continue to next middleware/endpoint
-            await _next(context);
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new
+            {
+                error = "Access denied",
+                message = $"No policies configured for resource '{policyAttribute.ResourceName}' with action '{policyAttribute.Action}'. Access is denied by default."
+            });
             return;
         }
 
@@ -88,44 +113,28 @@ public class QtxPolicyMiddleware
         var tempRlsRules = new List<RowLevelSecurityRule>();
         
         // OR logic between policies - if ANY policy matches, access is granted
-        foreach (var policyResource in applicablePolicies)
+        foreach (var policy in applicablePolicies)
         {
             _logger.LogInformation(
                 "Evaluating policy for resource {Resource} and action {Action}: {Policy}",
-                policyResource.ResourceName, policyResource.Action, policyResource.Policy.Description);
+                policyAttribute.ResourceName, policyAttribute.Action, policy.Description);
 
-            _logger.LogInformation(policyResource.Policy.PolicyData);
-
-            // Handle PII policies (policies with ResourceColumns)
-            // if (!string.IsNullOrEmpty(policyResource.ResourceColumns))
-            // {
-            //     var columns = policyResource.ResourceColumns.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            //     securityContextService.AddPiiPolicyRule(new PiiPolicyRule
-            //     {
-            //         ResourceName = policyResource.ResourceName ?? string.Empty,
-            //         Columns = columns,
-            //         Action = policyResource.Action ?? string.Empty
-            //     });
-            //     _logger.LogInformation(
-            //         "PII policy detected for resource {Resource} - Columns: [{Columns}]",
-            //         policyResource.ResourceName, string.Join(", ", columns));
-            //     continue;
-            // }
+            _logger.LogInformation(policy.PolicyData);
 
             PolicyRule? policyRules = null;
             try
             {
-                policyRules = JsonSerializer.Deserialize<PolicyRule>(policyResource.Policy.PolicyData);
+                policyRules = JsonSerializer.Deserialize<PolicyRule>(policy.PolicyData);
             }
             catch (JsonException ex)
             {
-                _logger.LogError(ex, "Failed to deserialize policy data for policy {PolicyId}", policyResource.PolicyId);
+                _logger.LogError(ex, "Failed to deserialize policy data for policy {PolicyId}", policy.Id);
                 continue;
             }
 
             if (policyRules == null)
             {
-                _logger.LogError("Failed to deserialize policy data for policy {PolicyId}", policyResource.PolicyId);
+                _logger.LogError("Failed to deserialize policy data for policy {PolicyId}", policy.Id);
                 continue;
             }
 

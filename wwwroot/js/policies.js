@@ -9,9 +9,6 @@ document.addEventListener('alpine:init', () => {
         
         // Modal states
         showModal: false,
-        showAssignModal: false,
-        showUpdateAssignmentModal: false,
-        showUnassignModal: false,
         showDeleteModal: false,
         isEditing: false,
         
@@ -20,34 +17,12 @@ document.addEventListener('alpine:init', () => {
             description: '',
             policyData: ''
         },
-        assignFormData: {
-            resourceName: '',
-            resourceColumns: '',
-            action: '',
-            effect: ''
-        },
-        updateAssignmentFormData: {
-            assignmentId: '',
-            resourceName: '',
-            resourceColumns: '',
-            action: '',
-            effect: ''
-        },
         formError: '',
-        assignFormError: '',
-        updateAssignmentFormError: '',
         submitting: false,
-        assigning: false,
-        updatingAssignment: false,
-        unassigning: false,
         deleting: false,
         
         // Selected items
         currentPolicy: null,
-        policyToAssign: null,
-        updateAssignmentPolicy: null,
-        currentAssignment: null,
-        assignmentToUnassign: null,
         policyToDelete: null,
 
         // Initialize
@@ -202,227 +177,6 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // Open assign policy modal
-        openAssignModal(policy) {
-            this.policyToAssign = policy;
-            this.assignFormData = {
-                resourceName: '',
-                resourceColumns: '',
-                action: '',
-                effect: ''
-            };
-            this.assignFormError = '';
-            this.showAssignModal = true;
-        },
-
-        // Close assign modal
-        closeAssignModal() {
-            this.showAssignModal = false;
-            this.assignFormError = '';
-            this.policyToAssign = null;
-        },
-
-        // Submit assign form
-        async submitAssignForm() {
-            this.assignFormError = '';
-            this.assigning = true;
-
-            try {
-                const auth = window.PolicyPOC?.auth?.load();
-                if (!auth?.token) {
-                    throw new Error('Not authenticated');
-                }
-
-                const response = await fetch('/api/Policies/assign', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${auth.token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        policyId: this.policyToAssign.id,
-                        resourceName: this.assignFormData.resourceName,
-                        resourceColumns: this.assignFormData.resourceColumns || null,
-                        action: this.assignFormData.action || null,
-                        effect: this.assignFormData.effect || null
-                    })
-                });
-
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        window.PolicyPOC.auth.clear();
-                        window.location.replace('/login.html');
-                        return;
-                    }
-                    if (response.status === 403) {
-                        throw new Error('Access denied. You do not have permission to assign policies.');
-                    }
-                    
-                    const errorData = await response.json().catch(() => null);
-                    if (errorData?.errors) {
-                        const errorMessages = Object.values(errorData.errors).flat().join(', ');
-                        throw new Error(errorMessages);
-                    }
-                    throw new Error(`Failed to assign policy: ${response.statusText}`);
-                }
-
-                this.successMessage = `Policy assigned to resource "${this.assignFormData.resourceName}" successfully!`;
-                this.closeAssignModal();
-                await this.loadPolicies();
-
-                // Clear success message after 5 seconds
-                setTimeout(() => {
-                    this.successMessage = '';
-                }, 5000);
-
-            } catch (error) {
-                console.error('Error assigning policy:', error);
-                this.assignFormError = error.message || 'Failed to assign policy. Please try again.';
-            } finally {
-                this.assigning = false;
-            }
-        },
-
-        // Open update assignment modal
-        openUpdateAssignmentModal(policy, assignment) {
-            this.updateAssignmentPolicy = policy;
-            this.currentAssignment = assignment;
-            this.updateAssignmentFormData = {
-                assignmentId: assignment.id,
-                resourceName: assignment.resourceName || '',
-                resourceColumns: assignment.resourceColumns || '',
-                action: assignment.action || '',
-                effect: assignment.effect || ''
-            };
-            this.updateAssignmentFormError = '';
-            this.showUpdateAssignmentModal = true;
-        },
-
-        // Close update assignment modal
-        closeUpdateAssignmentModal() {
-            this.showUpdateAssignmentModal = false;
-            this.updateAssignmentFormError = '';
-            this.updateAssignmentPolicy = null;
-            this.currentAssignment = null;
-        },
-
-        // Submit update assignment form
-        async submitUpdateAssignmentForm() {
-            this.updateAssignmentFormError = '';
-            this.updatingAssignment = true;
-
-            try {
-                const auth = window.PolicyPOC?.auth?.load();
-                if (!auth?.token) {
-                    throw new Error('Not authenticated');
-                }
-
-                const response = await fetch(`/api/Policies/assign/${this.updateAssignmentFormData.assignmentId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${auth.token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        assignmentId: this.updateAssignmentFormData.assignmentId,
-                        resourceName: this.updateAssignmentFormData.resourceName || null,
-                        resourceColumns: this.updateAssignmentFormData.resourceColumns || null,
-                        action: this.updateAssignmentFormData.action || null,
-                        effect: this.updateAssignmentFormData.effect || null
-                    })
-                });
-
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        window.PolicyPOC.auth.clear();
-                        window.location.replace('/login.html');
-                        return;
-                    }
-                    if (response.status === 403) {
-                        throw new Error('Access denied. You do not have permission to update policy assignments.');
-                    }
-                    
-                    const errorData = await response.json().catch(() => null);
-                    if (errorData?.errors) {
-                        const errorMessages = Object.values(errorData.errors).flat().join(', ');
-                        throw new Error(errorMessages);
-                    }
-                    throw new Error(`Failed to update policy assignment: ${response.statusText}`);
-                }
-
-                this.successMessage = `Policy assignment updated successfully!`;
-                this.closeUpdateAssignmentModal();
-                await this.loadPolicies();
-
-                // Clear success message after 5 seconds
-                setTimeout(() => {
-                    this.successMessage = '';
-                }, 5000);
-
-            } catch (error) {
-                console.error('Error updating policy assignment:', error);
-                this.updateAssignmentFormError = error.message || 'Failed to update policy assignment. Please try again.';
-            } finally {
-                this.updatingAssignment = false;
-            }
-        },
-
-        // Confirm unassign
-        confirmUnassign(assignment) {
-            this.assignmentToUnassign = assignment;
-            this.showUnassignModal = true;
-        },
-
-        // Unassign policy from resource
-        async unassignPolicy() {
-            if (!this.assignmentToUnassign) return;
-
-            this.unassigning = true;
-
-            try {
-                const auth = window.PolicyPOC?.auth?.load();
-                if (!auth?.token) {
-                    throw new Error('Not authenticated');
-                }
-
-                const response = await fetch(`/api/Policies/assign/${this.assignmentToUnassign.id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${auth.token}`
-                    }
-                });
-
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        window.PolicyPOC.auth.clear();
-                        window.location.replace('/login.html');
-                        return;
-                    }
-                    if (response.status === 403) {
-                        throw new Error('Access denied. You do not have permission to unassign policies.');
-                    }
-                    throw new Error(`Failed to unassign policy: ${response.statusText}`);
-                }
-
-                this.successMessage = 'Policy unassigned successfully!';
-                this.showUnassignModal = false;
-                this.assignmentToUnassign = null;
-                await this.loadPolicies();
-
-                // Clear success message after 5 seconds
-                setTimeout(() => {
-                    this.successMessage = '';
-                }, 5000);
-
-            } catch (error) {
-                console.error('Error unassigning policy:', error);
-                this.errorMessage = error.message || 'Failed to unassign policy. Please try again.';
-                this.showUnassignModal = false;
-            } finally {
-                this.unassigning = false;
-            }
-        },
-
         // Confirm delete
         confirmDelete(policy) {
             this.policyToDelete = policy;
@@ -480,4 +234,3 @@ document.addEventListener('alpine:init', () => {
         }
     }));
 });
-
