@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using PolicyPOC.Services;
 
 namespace PolicyPOC.Extensions;
@@ -42,58 +43,138 @@ public static class SecurityContextExtensions
     }
 
     /// <summary>
-    /// Gets list of PII columns that should be masked or filtered
+    /// Applies field-level security to an object based on the security context.
+    /// Handles Full, Masked, Empty, and Hidden access levels.
     /// </summary>
-    public static string[] GetPiiColumns(this ISecurityContextService securityContextService, string resourceName)
+    public static T ApplyFieldSecurity<T>(this T obj, ISecurityContextService securityContextService) where T : class
     {
         var securityContext = securityContextService.SecurityContext;
-        if (securityContext == null)
-        {
-            return Array.Empty<string>();
-        }
-
-        var piiPolicies = securityContext.PiiPolicyRules
-            .Where(p => p.ResourceName.Equals(resourceName, StringComparison.OrdinalIgnoreCase))
-            .SelectMany(p => p.Columns)
-            .Distinct()
-            .ToArray();
-
-        return piiPolicies;
-    }
-
-    /// <summary>
-    /// Masks PII fields in an object based on the security context
-    /// </summary>
-    public static T MaskPiiFields<T>(this T obj, ISecurityContextService securityContextService, string resourceName) where T : class
-    {
-        var piiColumns = securityContextService.GetPiiColumns(resourceName);
-        if (!piiColumns.Any())
+        if (securityContext == null || !securityContext.HasFieldLevelSecurity)
         {
             return obj;
         }
 
-        foreach (var column in piiColumns)
+        foreach (var fieldRule in securityContext.FieldAccessRules)
         {
-            var property = typeof(T).GetProperty(column, 
+            // Skip fields with full access
+            if (fieldRule.AccessLevel == FieldAccessLevel.Full)
+            {
+                continue;
+            }
+
+            var property = typeof(T).GetProperty(fieldRule.FieldName, 
                 System.Reflection.BindingFlags.IgnoreCase | 
                 System.Reflection.BindingFlags.Public | 
                 System.Reflection.BindingFlags.Instance);
 
-            if (property != null && property.CanWrite)
+            if (property == null || !property.CanWrite)
             {
-                if (property.PropertyType == typeof(string))
-                {
-                    property.SetValue(obj, "***MASKED***");
-                }
-                else
-                {
-                    // For non-string types, set to default value
+                continue;
+            }
+
+            switch (fieldRule.AccessLevel)
+            {
+                case FieldAccessLevel.Empty:
+                    // Set to null/default
                     property.SetValue(obj, null);
-                }
+                    break;
+
+                case FieldAccessLevel.Masked:
+                    // Apply mask format
+                    if (property.PropertyType == typeof(string))
+                    {
+                        var originalValue = property.GetValue(obj) as string;
+                        var maskedValue = ApplyMaskFormat(originalValue, fieldRule.MaskFormat);
+                        property.SetValue(obj, maskedValue);
+                    }
+                    else
+                    {
+                        // For non-string types, set to null
+                        property.SetValue(obj, null);
+                    }
+                    break;
+
+                case FieldAccessLevel.Hidden:
+                    // For Hidden, we set to null here. 
+                    // Ideally, the field should be excluded from serialization entirely
+                    // which would require a custom JSON serializer or DTO transformation
+                    property.SetValue(obj, null);
+                    break;
             }
         }
 
         return obj;
+    }
+
+    /// <summary>
+    /// Gets list of field names that should be hidden (excluded from response)
+    /// </summary>
+    public static string[] GetHiddenFields(this ISecurityContextService securityContextService)
+    {
+        var securityContext = securityContextService.SecurityContext;
+        if (securityContext == null || !securityContext.HasFieldLevelSecurity)
+        {
+            return Array.Empty<string>();
+        }
+
+        return securityContext.FieldAccessRules
+            .Where(r => r.AccessLevel == FieldAccessLevel.Hidden)
+            .Select(r => r.FieldName)
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Checks if field-level security is enabled and there are restricted fields
+    /// </summary>
+    public static bool HasFieldRestrictions(this ISecurityContextService securityContextService)
+    {
+        var securityContext = securityContextService.SecurityContext;
+        return securityContext?.HasFieldLevelSecurity == true &&
+               securityContext.FieldAccessRules.Any(r => r.AccessLevel != FieldAccessLevel.Full);
+    }
+
+    /// <summary>
+    /// Applies a mask format to a value.
+    /// Supported placeholders:
+    /// - {value}: The full original value
+    /// - {last4}: Last 4 characters
+    /// - {last3}: Last 3 characters
+    /// - {first4}: First 4 characters
+    /// - {first3}: First 3 characters
+    /// - {first1}: First character
+    /// </summary>
+    private static string ApplyMaskFormat(string? originalValue, string? maskFormat)
+    {
+        if (string.IsNullOrEmpty(originalValue))
+        {
+            return string.Empty;
+        }
+
+        if (string.IsNullOrEmpty(maskFormat))
+        {
+            return string.Empty;
+        }
+
+        var result = maskFormat;
+
+        // Replace placeholders
+        result = Regex.Replace(result, @"\{value\}", originalValue, RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\{last(\d+)\}", m =>
+        {
+            var count = int.Parse(m.Groups[1].Value);
+            return originalValue.Length >= count 
+                ? originalValue.Substring(originalValue.Length - count) 
+                : originalValue;
+        }, RegexOptions.IgnoreCase);
+        result = Regex.Replace(result, @"\{first(\d+)\}", m =>
+        {
+            var count = int.Parse(m.Groups[1].Value);
+            return originalValue.Length >= count 
+                ? originalValue.Substring(0, count) 
+                : originalValue;
+        }, RegexOptions.IgnoreCase);
+
+        return result;
     }
 }
 

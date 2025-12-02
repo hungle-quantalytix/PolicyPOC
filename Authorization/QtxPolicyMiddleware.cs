@@ -173,6 +173,15 @@ public class QtxPolicyMiddleware
             _logger.LogInformation(
                 "Access granted for user {UserId} to {Resource}:{Action}",
                 userId, policyAttribute.ResourceName, policyAttribute.Action);
+            
+            // Evaluate field-level policies after resource access is granted
+            await EvaluateFieldLevelPoliciesAsync(
+                resource!, 
+                policyAttribute.Action!, 
+                user, 
+                dbContext, 
+                securityContextService);
+            
             await _next(context);
             return;
         }
@@ -432,5 +441,122 @@ public class QtxPolicyMiddleware
                 _logger.LogWarning("Unable to resolve user field: {Field}", field);
                 return string.Empty;
         }
+    }
+
+    /// <summary>
+    /// Evaluates field-level policies and populates the security context with field access rules.
+    /// 
+    /// Logic:
+    /// - No policies on field: Full access (MaskFormat is ignored)
+    /// - Has policies + policy matched: Full access
+    /// - Has policies + no match: Apply MaskFormat (null=hidden, ""=empty, value=masked)
+    /// </summary>
+    private async Task EvaluateFieldLevelPoliciesAsync(
+        Resource resource,
+        string action,
+        ClaimsPrincipal user,
+        ApplicationDbContext dbContext,
+        ISecurityContextService securityContextService)
+    {
+        // Load fields with their policies
+        var fields = await dbContext.Fields
+            .Include(f => f.ReadPolicies)
+            .Include(f => f.WritePolicies)
+            .Where(f => f.ResourceId == resource.Id)
+            .ToListAsync();
+
+        if (!fields.Any())
+        {
+            _logger.LogDebug("No fields defined for resource {ResourceName}", resource.ResourceName);
+            return;
+        }
+
+        var isReadAction = action.ToLower() == "read";
+
+        foreach (var field in fields)
+        {
+            var fieldPolicies = isReadAction ? field.ReadPolicies : field.WritePolicies;
+            
+            FieldAccessLevel accessLevel;
+            
+            // Check if field has policies - policies determine protection, NOT MaskFormat
+            if (!fieldPolicies.Any())
+            {
+                // No policies on field: Full access (MaskFormat is ignored)
+                accessLevel = FieldAccessLevel.Full;
+                _logger.LogDebug(
+                    "Field {FieldName}: No policies assigned - Full access granted",
+                    field.FieldName);
+            }
+            else
+            {
+                // Field has policies: Evaluate them
+                bool policyMatched = false;
+                
+                foreach (var policy in fieldPolicies)
+                {
+                    try
+                    {
+                        var policyRules = JsonSerializer.Deserialize<PolicyRule>(policy.PolicyData);
+                        if (policyRules != null)
+                        {
+                            // Create temp context for field policy evaluation (don't mix with RLS rules)
+                            var tempContext = new SecurityContextService();
+                            bool result = await EvaluateRuleAsync(policyRules, user, dbContext, tempContext);
+                            
+                            if (result)
+                            {
+                                policyMatched = true;
+                                _logger.LogDebug(
+                                    "Field {FieldName}: Policy {PolicyId} matched - Full access granted",
+                                    field.FieldName, policy.Id);
+                                break; // OR logic - one match is enough
+                            }
+                        }
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogError(ex, "Failed to deserialize policy data for field policy {PolicyId}", policy.Id);
+                    }
+                }
+                
+                if (policyMatched)
+                {
+                    accessLevel = FieldAccessLevel.Full;
+                }
+                else
+                {
+                    // No policy matched: Apply MaskFormat
+                    accessLevel = DetermineAccessLevelFromMaskFormat(field.MaskFormat);
+                    _logger.LogDebug(
+                        "Field {FieldName}: No policies matched - Access level: {AccessLevel} (MaskFormat: {MaskFormat})",
+                        field.FieldName, accessLevel, field.MaskFormat ?? "null");
+                }
+            }
+            
+            // Add field access rule to security context
+            securityContextService.AddFieldAccess(new FieldAccessRule
+            {
+                FieldName = field.FieldName,
+                AccessLevel = accessLevel,
+                MaskFormat = accessLevel == FieldAccessLevel.Masked ? field.MaskFormat : null
+            });
+        }
+    }
+
+    /// <summary>
+    /// Determines the access level based on the MaskFormat value.
+    /// - null: Hidden (but this shouldn't be called for null, as null = normal field)
+    /// - "": Empty
+    /// - Any other value: Masked
+    /// </summary>
+    private static FieldAccessLevel DetermineAccessLevelFromMaskFormat(string? maskFormat)
+    {
+        return maskFormat switch
+        {
+            null => FieldAccessLevel.Hidden,
+            "" => FieldAccessLevel.Empty,
+            _ => FieldAccessLevel.Masked
+        };
     }
 }

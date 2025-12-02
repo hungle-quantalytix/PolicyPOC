@@ -244,7 +244,7 @@
                         <thead>
                             <tr>
                                 <th>Field Name</th>
-                                <th class="text-center">Public</th>
+                                <th>Mask Format</th>
                                 <th>Read Policies</th>
                                 <th>Write Policies</th>
                                 <th class="text-center">Actions</th>
@@ -256,8 +256,10 @@
                                     <td>
                                         <span class="fw-semibold" x-text="field.fieldName"></span>
                                     </td>
-                                    <td class="text-center">
-                                        <span class="badge" :class="field.isPublic ? 'bg-success' : 'bg-secondary'" x-text="field.isPublic ? 'Yes' : 'No'"></span>
+                                    <td>
+                                        <span x-show="field.maskFormat === null" class="text-muted small">None (Hidden when denied)</span>
+                                        <span x-show="field.maskFormat === ''" class="badge bg-secondary">Empty when denied</span>
+                                        <code x-show="field.maskFormat && field.maskFormat !== ''" class="small" x-text="field.maskFormat"></code>
                                     </td>
                                     <td>
                                         <div class="d-flex flex-wrap gap-1 policy-badge-container">
@@ -337,11 +339,23 @@
                                 <input type="text" class="form-control" x-model="fieldFormData.fieldName" required placeholder="e.g., amount, status">
                             </div>
                             <div class="mb-3">
-                                <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" x-model="fieldFormData.isPublic" id="isPublicCheck">
-                                    <label class="form-check-label" for="isPublicCheck">Is Public</label>
-                                </div>
-                                <small class="form-text text-muted">Public fields do not require policies for access</small>
+                                <label class="form-label">Mask Format (when denied)</label>
+                                <select class="form-select" x-model="fieldFormData.maskFormatType" @change="updateMaskFormat()">
+                                    <option value="none">None (Hidden when denied)</option>
+                                    <option value="empty">Empty (null when denied)</option>
+                                    <option value="custom">Custom mask format</option>
+                                </select>
+                                <small class="form-text text-muted">
+                                    Only applies when field has policies and user doesn't match any.
+                                    If no policies, user gets full access.
+                                </small>
+                            </div>
+                            <div class="mb-3" x-show="fieldFormData.maskFormatType === 'custom'">
+                                <label class="form-label">Custom Mask Format</label>
+                                <input type="text" class="form-control" x-model="fieldFormData.maskFormat" placeholder="e.g., ***-**-{last4}">
+                                <small class="form-text text-muted">
+                                    Placeholders: {value}, {last4}, {first4}, {first1}, etc.
+                                </small>
                             </div>
                             <div x-show="fieldFormError" class="alert alert-danger mt-3" x-text="fieldFormError"></div>
                         </form>

@@ -11,15 +11,35 @@ public class SecurityContextService : ISecurityContextService
         _securityContext.RowLevelSecurityRules.Add(rule);
     }
 
-    public void AddPiiPolicyRule(PiiPolicyRule rule)
+    public void AddFieldAccess(FieldAccessRule rule)
     {
-        _securityContext.PiiPolicyRules.Add(rule);
+        // Remove existing rule for same field if exists
+        _securityContext.FieldAccessRules.RemoveAll(r => 
+            r.FieldName.Equals(rule.FieldName, StringComparison.OrdinalIgnoreCase));
+        _securityContext.FieldAccessRules.Add(rule);
+        _securityContext.HasFieldLevelSecurity = true;
+    }
+
+    public bool HasFieldAccess(string fieldName)
+    {
+        if (!_securityContext.HasFieldLevelSecurity)
+            return true; // No field-level security evaluated, allow all
+            
+        var rule = GetFieldAccessRule(fieldName);
+        return rule?.AccessLevel == FieldAccessLevel.Full;
+    }
+
+    public FieldAccessRule? GetFieldAccessRule(string fieldName)
+    {
+        return _securityContext.FieldAccessRules
+            .FirstOrDefault(r => r.FieldName.Equals(fieldName, StringComparison.OrdinalIgnoreCase));
     }
 
     public void Clear()
     {
         _securityContext.RowLevelSecurityRules.Clear();
-        _securityContext.PiiPolicyRules.Clear();
+        _securityContext.FieldAccessRules.Clear();
+        _securityContext.HasFieldLevelSecurity = false;
     }
 }
 

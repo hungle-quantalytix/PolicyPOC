@@ -14,7 +14,8 @@ document.addEventListener('alpine:init', () => {
         currentField: null,
         fieldFormData: {
             fieldName: '',
-            isPublic: false
+            maskFormat: null,
+            maskFormatType: 'none' // 'none', 'empty', 'custom'
         },
         fieldFormError: '',
         submittingField: false,
@@ -136,7 +137,8 @@ document.addEventListener('alpine:init', () => {
             this.currentField = null;
             this.fieldFormData = {
                 fieldName: '',
-                isPublic: false
+                maskFormat: null,
+                maskFormatType: 'none'
             };
             this.fieldFormError = '';
             this.showFieldModal = true;
@@ -145,12 +147,40 @@ document.addEventListener('alpine:init', () => {
         openEditFieldModal(field) {
             this.isEditingField = true;
             this.currentField = field;
+            
+            // Determine maskFormatType from maskFormat value
+            let maskFormatType = 'none';
+            if (field.maskFormat === '') {
+                maskFormatType = 'empty';
+            } else if (field.maskFormat !== null && field.maskFormat !== undefined) {
+                maskFormatType = 'custom';
+            }
+            
             this.fieldFormData = {
                 fieldName: field.fieldName,
-                isPublic: field.isPublic
+                maskFormat: field.maskFormat,
+                maskFormatType: maskFormatType
             };
             this.fieldFormError = '';
             this.showFieldModal = true;
+        },
+
+        // Update maskFormat based on maskFormatType selection
+        updateMaskFormat() {
+            switch (this.fieldFormData.maskFormatType) {
+                case 'none':
+                    this.fieldFormData.maskFormat = null;
+                    break;
+                case 'empty':
+                    this.fieldFormData.maskFormat = '';
+                    break;
+                case 'custom':
+                    // Keep existing value or set a placeholder
+                    if (!this.fieldFormData.maskFormat) {
+                        this.fieldFormData.maskFormat = '***';
+                    }
+                    break;
+            }
         },
 
         closeFieldModal() {
@@ -174,13 +204,19 @@ document.addEventListener('alpine:init', () => {
                     : `/api/resources/${resourceId}/fields`;
                 const method = this.isEditingField ? 'PUT' : 'POST';
 
+                // Prepare data - only send fieldName and maskFormat
+                const requestData = {
+                    fieldName: this.fieldFormData.fieldName,
+                    maskFormat: this.fieldFormData.maskFormat
+                };
+
                 const response = await fetch(url, {
                     method: method,
                     headers: {
                         'Authorization': `Bearer ${auth.token}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(this.fieldFormData)
+                    body: JSON.stringify(requestData)
                 });
 
                 if (!response.ok) {

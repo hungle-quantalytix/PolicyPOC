@@ -35,13 +35,12 @@ public class LoansController(
         // This will filter the results based on policies like "resource.Department = user.Department"
         query = query.ApplyRowLevelSecurity(_securityContextService);
 
-        // Get PII columns to mask
-        var piiColumns = _securityContextService.GetPiiColumns("Loan");
-        var hasPiiRestrictions = piiColumns.Any();
+        // Check if we have field-level restrictions
+        var hasFieldRestrictions = _securityContextService.HasFieldRestrictions();
 
-        _logger.LogInformation("Fetching loans with {RLSRules} row-level security rules and {PiiColumns} PII columns to mask",
+        _logger.LogInformation("Fetching loans with {RLSRules} row-level security rules, field restrictions: {HasFieldRestrictions}",
             _securityContextService.SecurityContext.RowLevelSecurityRules.Count,
-            piiColumns.Length);
+            hasFieldRestrictions);
 
         var loans = await query
             .Select(l => new LoanResponse
@@ -78,10 +77,10 @@ public class LoansController(
             })
             .ToListAsync();
 
-        // Apply PII masking to each loan response
-        if (hasPiiRestrictions)
+        // Apply field-level security (masking, empty, hidden) based on security context
+        if (hasFieldRestrictions)
         {
-            loans = loans.Select(loan => loan.MaskPiiFields(_securityContextService, "Loan")).ToList();
+            loans = loans.Select(loan => loan.ApplyFieldSecurity(_securityContextService)).ToList();
         }
 
         return Ok(loans);

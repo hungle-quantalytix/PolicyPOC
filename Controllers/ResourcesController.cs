@@ -40,7 +40,7 @@ public class ResourcesController(
                 {
                     Id = f.Id,
                     FieldName = f.FieldName,
-                    IsPublic = f.IsPublic,
+                    MaskFormat = f.MaskFormat,
                     ResourceId = f.ResourceId,
                     ReadPolicyIds = f.ReadPolicies.Select(p => p.Id).ToList(),
                     WritePolicyIds = f.WritePolicies.Select(p => p.Id).ToList()
@@ -79,7 +79,7 @@ public class ResourcesController(
             {
                 Id = f.Id,
                 FieldName = f.FieldName,
-                IsPublic = f.IsPublic,
+                MaskFormat = f.MaskFormat,
                 ResourceId = f.ResourceId,
                 ReadPolicyIds = f.ReadPolicies.Select(p => p.Id).ToList(),
                 WritePolicyIds = f.WritePolicies.Select(p => p.Id).ToList()
@@ -200,7 +200,7 @@ public class ResourcesController(
         {
             Id = f.Id,
             FieldName = f.FieldName,
-            IsPublic = f.IsPublic,
+            MaskFormat = f.MaskFormat,
             ResourceId = f.ResourceId,
             ReadPolicyIds = f.ReadPolicies.Select(p => p.Id).ToList(),
             WritePolicyIds = f.WritePolicies.Select(p => p.Id).ToList()
@@ -227,7 +227,7 @@ public class ResourcesController(
         {
             Id = field.Id,
             FieldName = field.FieldName,
-            IsPublic = field.IsPublic,
+            MaskFormat = field.MaskFormat,
             ResourceId = field.ResourceId,
             ReadPolicyIds = field.ReadPolicies.Select(p => p.Id).ToList(),
             WritePolicyIds = field.WritePolicies.Select(p => p.Id).ToList()
@@ -257,7 +257,7 @@ public class ResourcesController(
         {
             Id = Guid.NewGuid(),
             FieldName = request.FieldName,
-            IsPublic = request.IsPublic,
+            MaskFormat = request.MaskFormat,
             ResourceId = resourceId
         };
 
@@ -270,7 +270,7 @@ public class ResourcesController(
         {
             Id = field.Id,
             FieldName = field.FieldName,
-            IsPublic = field.IsPublic,
+            MaskFormat = field.MaskFormat,
             ResourceId = field.ResourceId,
             ReadPolicyIds = new List<Guid>(),
             WritePolicyIds = new List<Guid>()
@@ -297,7 +297,7 @@ public class ResourcesController(
         var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? "system";
 
         field.FieldName = request.FieldName;
-        field.IsPublic = request.IsPublic;
+        field.MaskFormat = request.MaskFormat;
 
         try
         {

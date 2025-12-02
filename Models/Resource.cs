@@ -25,8 +25,16 @@ public class Field
     // We will need strong type and fully optimized for JSONB storage
     // It means that the following field will be a property in a class not directly in Field class
 
-    // For POC IsPublic 
-    public required bool IsPublic { get; set; }
+    // MaskFormat determines what to show when user doesn't have permission (denied):
+    // - null: Hidden (field excluded from response)
+    // - "": Empty (return null/empty)
+    // - "***-**-{last4}": Masked (apply format)
+    // 
+    // Note: MaskFormat is ONLY used when field has policies AND user doesn't match any.
+    //       If field has no policies, user gets full access (MaskFormat ignored).
+    // 
+    // Format placeholders: {value}, {last4}, {first4}, {first1}, etc.
+    public string? MaskFormat { get; set; }
     // public required bool IsPII { get; set; }
     
     // Foreign key to Resource
