@@ -37,6 +37,9 @@ builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 // Register security context service as scoped (per request)
 builder.Services.AddScoped<ISecurityContextService, SecurityContextService>();
 
+// Register permission service for unified permission evaluation
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

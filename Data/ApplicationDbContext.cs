@@ -16,6 +16,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Resource> Resources { get; set; }
     public DbSet<Field> Fields { get; set; }
     public DbSet<Policy> Policies { get; set; }
+    public DbSet<Permission> Permissions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,6 +52,32 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             .HasMany(f => f.WritePolicies)
             .WithMany(p => p.WriteFields)
             .UsingEntity(j => j.ToTable("FieldWritePolicies"));
+
+        // Configure Permission entity
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.HasKey(p => p.Id);
+            
+            // Unique constraint: one permission per resource/field/action/subject combination
+            entity.HasIndex(p => new { 
+                p.ResourceType, 
+                p.ResourceId, 
+                p.FieldName, 
+                p.Action, 
+                p.SubjectType, 
+                p.SubjectId 
+            }).IsUnique();
+            
+            // Performance index: lookup by subject (for "what can user X access?")
+            entity.HasIndex(p => new { p.SubjectType, p.SubjectId });
+            
+            // Performance index: lookup by resource (for "who can access resource Y?")
+            entity.HasIndex(p => new { p.ResourceType, p.ResourceId, p.Action });
+            
+            // Performance index: field-level lookups
+            entity.HasIndex(p => new { p.ResourceType, p.FieldName, p.Action })
+                .HasFilter("\"FieldName\" IS NOT NULL");
+        });
     }
 }
 

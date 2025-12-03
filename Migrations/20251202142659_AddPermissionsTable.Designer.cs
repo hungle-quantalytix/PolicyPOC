@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PolicyPOC.Data;
 
@@ -10,9 +11,11 @@ using PolicyPOC.Data;
 namespace PolicyPOC.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251202142659_AddPermissionsTable")]
+    partial class AddPermissionsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
@@ -378,13 +381,19 @@ namespace PolicyPOC.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Conditions")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("FieldName")
+                    b.Property<DateTime?>("ExpiresAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ResourceId")
@@ -404,14 +413,13 @@ namespace PolicyPOC.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("ResourceType", "Action");
+
                     b.HasIndex("SubjectType", "SubjectId");
 
-                    b.HasIndex("ResourceType", "FieldName", "Action")
-                        .HasFilter("\"FieldName\" IS NOT NULL");
-
-                    b.HasIndex("ResourceType", "ResourceId", "Action");
-
-                    b.HasIndex("ResourceType", "ResourceId", "FieldName", "Action", "SubjectType", "SubjectId")
+                    b.HasIndex("ResourceType", "ResourceId", "Action", "SubjectType", "SubjectId")
                         .IsUnique();
 
                     b.ToTable("Permissions");
