@@ -3,7 +3,6 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('resourceDetailPage', () => ({
         // State
         resource: null,
-        policies: [],
         loading: false,
         successMessage: '',
         errorMessage: '',
@@ -24,22 +23,6 @@ document.addEventListener('alpine:init', () => {
         showDeleteFieldModal: false,
         fieldToDelete: null,
         deletingField: false,
-        
-        // Policy assignment
-        showAssignPolicyModal: false,
-        assignPolicyTarget: 'resource', // 'resource' or 'field'
-        fieldForPolicy: null,
-        assignPolicyFormData: {
-            policyId: '',
-            action: ''
-        },
-        assignPolicyFormError: '',
-        assigningPolicy: false,
-        
-        // Unassign policy
-        showUnassignPolicyModal: false,
-        policyToUnassign: null,
-        unassigningPolicy: false,
 
         // Initialize
         async init() {
@@ -48,10 +31,7 @@ document.addEventListener('alpine:init', () => {
                 window.PolicyPOC.auth.ensureAuthenticated();
             }
             
-            await Promise.all([
-                this.loadResource(),
-                this.loadPolicies()
-            ]);
+            await this.loadResource();
         },
 
         // Get resource ID from URL
@@ -102,32 +82,6 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.loading = false;
             }
-        },
-
-        // Load all policies for dropdown
-        async loadPolicies() {
-            try {
-                const auth = window.PolicyPOC?.auth?.load();
-                if (!auth?.token) return;
-
-                const response = await fetch('/api/Policies', {
-                    headers: {
-                        'Authorization': `Bearer ${auth.token}`
-                    }
-                });
-
-                if (response.ok) {
-                    this.policies = await response.json();
-                }
-            } catch (error) {
-                console.error('Error loading policies:', error);
-            }
-        },
-
-        // Get policy description by ID
-        getPolicyDescription(policyId) {
-            const policy = this.policies.find(p => p.id === policyId);
-            return policy?.description || policyId?.substring(0, 8) + '...';
         },
 
         // ==================== Field CRUD ====================
@@ -302,175 +256,6 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.deletingField = false;
             }
-        },
-
-        // ==================== Policy Assignment ====================
-
-        openAssignResourcePolicyModal() {
-            this.assignPolicyTarget = 'resource';
-            this.fieldForPolicy = null;
-            this.assignPolicyFormData = {
-                policyId: '',
-                action: ''
-            };
-            this.assignPolicyFormError = '';
-            this.showAssignPolicyModal = true;
-        },
-
-        openAssignFieldPolicyModal(field) {
-            this.assignPolicyTarget = 'field';
-            this.fieldForPolicy = field;
-            this.assignPolicyFormData = {
-                policyId: '',
-                action: ''
-            };
-            this.assignPolicyFormError = '';
-            this.showAssignPolicyModal = true;
-        },
-
-        closeAssignPolicyModal() {
-            this.showAssignPolicyModal = false;
-            this.assignPolicyFormError = '';
-        },
-
-        async submitAssignPolicyForm() {
-            this.assignPolicyFormError = '';
-            this.assigningPolicy = true;
-
-            try {
-                const auth = window.PolicyPOC?.auth?.load();
-                if (!auth?.token) {
-                    throw new Error('Not authenticated');
-                }
-
-                const resourceId = this.getResourceId();
-                let url;
-                
-                if (this.assignPolicyTarget === 'resource') {
-                    url = `/api/resources/${resourceId}/assign-policy`;
-                } else {
-                    url = `/api/resources/${resourceId}/fields/${this.fieldForPolicy.id}/assign-policy`;
-                }
-
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${auth.token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(this.assignPolicyFormData)
-                });
-
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        window.PolicyPOC.auth.clear();
-                        window.location.replace('/login.html');
-                        return;
-                    }
-                    
-                    const errorData = await response.json().catch(() => null);
-                    if (errorData?.message) {
-                        throw new Error(errorData.message);
-                    }
-                    throw new Error(`Failed to assign policy: ${response.statusText}`);
-                }
-
-                const targetName = this.assignPolicyTarget === 'resource' ? 'resource' : `field "${this.fieldForPolicy.fieldName}"`;
-                this.successMessage = `Policy assigned to ${targetName} successfully!`;
-
-                this.closeAssignPolicyModal();
-                await this.loadResource();
-
-                setTimeout(() => {
-                    this.successMessage = '';
-                }, 5000);
-
-            } catch (error) {
-                console.error('Error assigning policy:', error);
-                this.assignPolicyFormError = error.message || 'Failed to assign policy. Please try again.';
-            } finally {
-                this.assigningPolicy = false;
-            }
-        },
-
-        confirmUnassignResourcePolicy(policyId, action) {
-            this.policyToUnassign = {
-                target: 'resource',
-                policyId: policyId,
-                action: action
-            };
-            this.showUnassignPolicyModal = true;
-        },
-
-        confirmUnassignFieldPolicy(field, policyId, action) {
-            this.policyToUnassign = {
-                target: 'field',
-                fieldId: field.id,
-                fieldName: field.fieldName,
-                policyId: policyId,
-                action: action
-            };
-            this.showUnassignPolicyModal = true;
-        },
-
-        async unassignPolicy() {
-            if (!this.policyToUnassign) return;
-
-            this.unassigningPolicy = true;
-
-            try {
-                const auth = window.PolicyPOC?.auth?.load();
-                if (!auth?.token) {
-                    throw new Error('Not authenticated');
-                }
-
-                const resourceId = this.getResourceId();
-                let url;
-                
-                if (this.policyToUnassign.target === 'resource') {
-                    url = `/api/resources/${resourceId}/unassign-policy`;
-                } else {
-                    url = `/api/resources/${resourceId}/fields/${this.policyToUnassign.fieldId}/unassign-policy`;
-                }
-
-                const response = await fetch(url, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${auth.token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        policyId: this.policyToUnassign.policyId,
-                        action: this.policyToUnassign.action
-                    })
-                });
-
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        window.PolicyPOC.auth.clear();
-                        window.location.replace('/login.html');
-                        return;
-                    }
-                    throw new Error(`Failed to unassign policy: ${response.statusText}`);
-                }
-
-                this.successMessage = 'Policy removed successfully!';
-                this.showUnassignPolicyModal = false;
-                this.policyToUnassign = null;
-                await this.loadResource();
-
-                setTimeout(() => {
-                    this.successMessage = '';
-                }, 5000);
-
-            } catch (error) {
-                console.error('Error unassigning policy:', error);
-                this.errorMessage = error.message || 'Failed to unassign policy. Please try again.';
-                this.showUnassignPolicyModal = false;
-            } finally {
-                this.unassigningPolicy = false;
-            }
         }
     }));
 });
-

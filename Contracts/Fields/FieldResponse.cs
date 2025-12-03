@@ -14,11 +14,5 @@ public class FieldResponse
     public string? MaskFormat { get; set; }
     
     public Guid ResourceId { get; set; }
-    
-    // Policy IDs assigned for read action
-    public List<Guid>? ReadPolicyIds { get; set; }
-    
-    // Policy IDs assigned for write action
-    public List<Guid>? WritePolicyIds { get; set; }
 }
 
