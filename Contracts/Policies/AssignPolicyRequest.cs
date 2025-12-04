@@ -11,13 +11,10 @@ public class AssignPolicyRequest
     [MaxLength(100)]
     public required string ResourceName { get; set; }
 
-    [MaxLength(500)]
-    public string? ResourceColumns { get; set; }
-
+    /// <summary>
+    /// Action type: "read" or "write"
+    /// </summary>
     [MaxLength(100)]
     public string? Action { get; set; }
-
-    [MaxLength(100)]
-    public string? Effect { get; set; }
 }
 

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PolicyPOC.Data;
 
@@ -10,9 +11,11 @@ using PolicyPOC.Data;
 namespace PolicyPOC.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251202042726_ReplacesIsPublicWithMaskFormat")]
+    partial class ReplacesIsPublicWithMaskFormat
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.0");
@@ -366,55 +369,6 @@ namespace PolicyPOC.Migrations
                     b.HasKey("LoanId");
 
                     b.ToTable("Loans");
-                });
-
-            modelBuilder.Entity("PolicyPOC.Models.Permission", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("FieldName")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ResourceId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ResourceType")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("SubjectId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("SubjectType")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SubjectType", "SubjectId");
-
-                    b.HasIndex("ResourceType", "FieldName", "Action")
-                        .HasFilter("\"FieldName\" IS NOT NULL");
-
-                    b.HasIndex("ResourceType", "ResourceId", "Action");
-
-                    b.HasIndex("ResourceType", "ResourceId", "FieldName", "Action", "SubjectType", "SubjectId")
-                        .IsUnique();
-
-                    b.ToTable("Permissions");
                 });
 
             modelBuilder.Entity("PolicyPOC.Models.Policy", b =>

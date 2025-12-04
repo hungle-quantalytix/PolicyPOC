@@ -23,21 +23,15 @@ public class PoliciesController(
     public async Task<ActionResult<IEnumerable<PolicyResponse>>> GetPolicies()
     {
         var policies = await _context.Policies
-            .Include(p => p.PolicyResources)
+            .Include(p => p.ReadResources)
+            .Include(p => p.WriteResources)
             .Select(p => new PolicyResponse
             {
                 Id = p.Id,
                 Description = p.Description,
                 PolicyData = p.PolicyData,
-                PolicyResources = p.PolicyResources.Select(pr => new PolicyResourceResponse
-                {
-                    Id = pr.Id,
-                    PolicyId = pr.PolicyId,
-                    ResourceName = pr.ResourceName,
-                    ResourceColumns = pr.ResourceColumns,
-                    Action = pr.Action,
-                    Effect = pr.Effect
-                }).ToList()
+                ReadResourceNames = p.ReadResources.Select(r => r.ResourceName).ToList(),
+                WriteResourceNames = p.WriteResources.Select(r => r.ResourceName).ToList()
             })
             .ToListAsync();
 
@@ -49,7 +43,8 @@ public class PoliciesController(
     public async Task<ActionResult<PolicyResponse>> GetPolicy(Guid id)
     {
         var policy = await _context.Policies
-            .Include(p => p.PolicyResources)
+            .Include(p => p.ReadResources)
+            .Include(p => p.WriteResources)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (policy == null)
@@ -62,15 +57,8 @@ public class PoliciesController(
             Id = policy.Id,
             Description = policy.Description,
             PolicyData = policy.PolicyData,
-            PolicyResources = policy.PolicyResources.Select(pr => new PolicyResourceResponse
-            {
-                Id = pr.Id,
-                PolicyId = pr.PolicyId,
-                ResourceName = pr.ResourceName,
-                ResourceColumns = pr.ResourceColumns,
-                Action = pr.Action,
-                Effect = pr.Effect
-            }).ToList()
+            ReadResourceNames = policy.ReadResources.Select(r => r.ResourceName).ToList(),
+            WriteResourceNames = policy.WriteResources.Select(r => r.ResourceName).ToList()
         };
 
         return Ok(response);
@@ -91,8 +79,7 @@ public class PoliciesController(
         {
             Id = Guid.NewGuid(),
             Description = request.Description,
-            PolicyData = request.PolicyData,
-            PolicyResources = new List<PolicyResource>()
+            PolicyData = request.PolicyData
         };
 
         _context.Policies.Add(policy);
@@ -105,7 +92,8 @@ public class PoliciesController(
             Id = policy.Id,
             Description = policy.Description,
             PolicyData = policy.PolicyData,
-            PolicyResources = new List<PolicyResourceResponse>()
+            ReadResourceNames = new List<string>(),
+            WriteResourceNames = new List<string>()
         };
 
         return CreatedAtAction(nameof(GetPolicy), new { id = policy.Id }, response);
@@ -154,7 +142,8 @@ public class PoliciesController(
     public async Task<IActionResult> DeletePolicy(Guid id)
     {
         var policy = await _context.Policies
-            .Include(p => p.PolicyResources)
+            .Include(p => p.ReadResources)
+            .Include(p => p.WriteResources)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (policy == null)
@@ -173,156 +162,154 @@ public class PoliciesController(
     }
 
     // POST: api/Policies/assign
+    // Assigns a policy to a resource for a specific action (read/write)
     [HttpPost("assign")]
-    public async Task<ActionResult<PolicyResourceResponse>> AssignPolicy([FromBody] AssignPolicyRequest request)
+    public async Task<IActionResult> AssignPolicy([FromBody] AssignPolicyRequest request)
     {
         if (!ModelState.IsValid)
         {
             return ValidationProblem(ModelState);
         }
 
-        var policy = await _context.Policies.FindAsync(request.PolicyId);
+        var policy = await _context.Policies
+            .Include(p => p.ReadResources)
+            .Include(p => p.WriteResources)
+            .FirstOrDefaultAsync(p => p.Id == request.PolicyId);
+            
         if (policy == null)
         {
             return NotFound(new { message = $"Policy with ID '{request.PolicyId}' not found." });
         }
 
+        var resource = await _context.Resources
+            .Include(r => r.ReadPolicies)
+            .Include(r => r.WritePolicies)
+            .FirstOrDefaultAsync(r => r.ResourceName == request.ResourceName);
+            
+        if (resource == null)
+        {
+            return NotFound(new { message = $"Resource with name '{request.ResourceName}' not found." });
+        }
+
         var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? "system";
 
-        var policyResource = new PolicyResource
+        // Assign based on action type
+        var action = request.Action?.ToLower() ?? "read";
+        
+        if (action == "read")
         {
-            Id = Guid.NewGuid(),
-            PolicyId = request.PolicyId,
-            ResourceName = request.ResourceName,
-            ResourceColumns = request.ResourceColumns,
-            Action = request.Action,
-            Effect = request.Effect,
-            Policy = policy
-        };
+            if (!resource.ReadPolicies.Any(p => p.Id == policy.Id))
+            {
+                resource.ReadPolicies.Add(policy);
+            }
+        }
+        else if (action == "write")
+        {
+            if (!resource.WritePolicies.Any(p => p.Id == policy.Id))
+            {
+                resource.WritePolicies.Add(policy);
+            }
+        }
+        else
+        {
+            return BadRequest(new { message = $"Invalid action '{request.Action}'. Supported actions: read, write" });
+        }
 
-        _context.PolicyResources.Add(policyResource);
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation("Policy {PolicyId} assigned to resource {ResourceName} by {User}", 
-            request.PolicyId, request.ResourceName, userEmail);
+        _logger.LogInformation("Policy {PolicyId} assigned to resource {ResourceName} for action {Action} by {User}", 
+            request.PolicyId, request.ResourceName, action, userEmail);
 
-        var response = new PolicyResourceResponse
-        {
-            Id = policyResource.Id,
-            PolicyId = policyResource.PolicyId,
-            ResourceName = policyResource.ResourceName,
-            ResourceColumns = policyResource.ResourceColumns,
-            Action = policyResource.Action,
-            Effect = policyResource.Effect
-        };
-
-        return Ok(response);
+        return Ok(new 
+        { 
+            message = $"Policy assigned to resource '{request.ResourceName}' for action '{action}'",
+            policyId = policy.Id,
+            resourceName = resource.ResourceName,
+            action = action
+        });
     }
 
-    // PUT: api/Policies/assign/{id}
-    [HttpPut("assign/{id}")]
-    public async Task<IActionResult> UpdatePolicyAssignment(Guid id, [FromBody] UpdatePolicyAssignmentRequest request)
+    // DELETE: api/Policies/unassign
+    // Removes a policy assignment from a resource
+    [HttpDelete("unassign")]
+    public async Task<IActionResult> UnassignPolicy([FromBody] AssignPolicyRequest request)
     {
         if (!ModelState.IsValid)
         {
             return ValidationProblem(ModelState);
         }
 
-        if (id != request.AssignmentId)
+        var resource = await _context.Resources
+            .Include(r => r.ReadPolicies)
+            .Include(r => r.WritePolicies)
+            .FirstOrDefaultAsync(r => r.ResourceName == request.ResourceName);
+            
+        if (resource == null)
         {
-            return BadRequest(new { message = "Assignment ID in URL does not match the request body." });
-        }
-
-        var policyResource = await _context.PolicyResources.FindAsync(id);
-        if (policyResource == null)
-        {
-            return NotFound(new { message = $"Policy assignment with ID '{id}' not found." });
+            return NotFound(new { message = $"Resource with name '{request.ResourceName}' not found." });
         }
 
         var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? "system";
+        var action = request.Action?.ToLower() ?? "read";
 
-        // Update only the fields that are provided
-        if (request.ResourceName != null)
-        {
-            policyResource.ResourceName = request.ResourceName;
-        }
+        Policy? policyToRemove = null;
         
-        if (request.ResourceColumns != null)
+        if (action == "read")
         {
-            policyResource.ResourceColumns = request.ResourceColumns;
-        }
-        
-        if (request.Action != null)
-        {
-            policyResource.Action = request.Action;
-        }
-        
-        if (request.Effect != null)
-        {
-            policyResource.Effect = request.Effect;
-        }
-
-        try
-        {
-            await _context.SaveChangesAsync();
-            _logger.LogInformation("Policy assignment {Id} updated successfully by {User}", id, userEmail);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!await _context.PolicyResources.AnyAsync(pr => pr.Id == id))
+            policyToRemove = resource.ReadPolicies.FirstOrDefault(p => p.Id == request.PolicyId);
+            if (policyToRemove != null)
             {
-                return NotFound(new { message = $"Policy assignment with ID '{id}' not found." });
+                resource.ReadPolicies.Remove(policyToRemove);
             }
-            throw;
         }
-
-        return NoContent();
-    }
-
-    // DELETE: api/Policies/assign/{id}
-    [HttpDelete("assign/{id}")]
-    public async Task<IActionResult> UnassignPolicy(Guid id)
-    {
-        var policyResource = await _context.PolicyResources.FindAsync(id);
-        if (policyResource == null)
+        else if (action == "write")
         {
-            return NotFound(new { message = $"Policy assignment with ID '{id}' not found." });
+            policyToRemove = resource.WritePolicies.FirstOrDefault(p => p.Id == request.PolicyId);
+            if (policyToRemove != null)
+            {
+                resource.WritePolicies.Remove(policyToRemove);
+            }
+        }
+        else
+        {
+            return BadRequest(new { message = $"Invalid action '{request.Action}'. Supported actions: read, write" });
         }
 
-        var userEmail = User.FindFirstValue(ClaimTypes.Email) ?? "system";
+        if (policyToRemove == null)
+        {
+            return NotFound(new { message = $"Policy with ID '{request.PolicyId}' is not assigned to resource '{request.ResourceName}' for action '{action}'." });
+        }
 
-        _context.PolicyResources.Remove(policyResource);
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation("Policy assignment {Id} removed by {User}", id, userEmail);
+        _logger.LogInformation("Policy {PolicyId} unassigned from resource {ResourceName} for action {Action} by {User}", 
+            request.PolicyId, request.ResourceName, action, userEmail);
 
         return NoContent();
     }
 
-    // GET: api/Policies/{id}/assignments
-    [HttpGet("{id}/assignments")]
-    public async Task<ActionResult<IEnumerable<PolicyResourceResponse>>> GetPolicyAssignments(Guid id)
+    // GET: api/Policies/{id}/resources
+    // Gets all resources that have this policy assigned
+    [HttpGet("{id}/resources")]
+    public async Task<IActionResult> GetPolicyResources(Guid id)
     {
-        var policy = await _context.Policies.FindAsync(id);
+        var policy = await _context.Policies
+            .Include(p => p.ReadResources)
+            .Include(p => p.WriteResources)
+            .FirstOrDefaultAsync(p => p.Id == id);
+            
         if (policy == null)
         {
             return NotFound(new { message = $"Policy with ID '{id}' not found." });
         }
 
-        var assignments = await _context.PolicyResources
-            .Where(pr => pr.PolicyId == id)
-            .Select(pr => new PolicyResourceResponse
-            {
-                Id = pr.Id,
-                PolicyId = pr.PolicyId,
-                ResourceName = pr.ResourceName,
-                ResourceColumns = pr.ResourceColumns,
-                Action = pr.Action,
-                Effect = pr.Effect
-            })
-            .ToListAsync();
-
-        return Ok(assignments);
+        return Ok(new
+        {
+            policyId = policy.Id,
+            description = policy.Description,
+            readResources = policy.ReadResources.Select(r => new { r.Id, r.ResourceName }).ToList(),
+            writeResources = policy.WriteResources.Select(r => new { r.Id, r.ResourceName }).ToList()
+        });
     }
 
     private async Task<bool> PolicyExists(Guid id)
