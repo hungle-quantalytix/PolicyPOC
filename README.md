@@ -115,4 +115,39 @@ Because all pages are static, editing the HTML or JS under `wwwroot` and refresh
 
 ---
 
+## Authorization Flow Diagram
 
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant M as QtxPolicyMiddleware
+    participant P as PermissionService
+    participant S as SecurityContextService
+    participant C as Controller
+    participant DB as Database
+
+    U->>M: HTTP Request with JWT
+    M->>M: Validate JWT Token
+
+    alt JWT Invalid
+        M-->>U: 401 Unauthorized
+    else JWT Valid
+        M->>P: Check Permission (Resource, Action, User)
+        P->>DB: Query Permissions Table
+        P->>P: Evaluate Policies in Priority Order
+        Note over P: Policy → Role → User
+
+        alt Permission Granted
+            P->>S: Store Row/Field Rules in Security Context
+            M->>C: Allow Request
+            C->>DB: Query with Row-Level Security
+            DB-->>C: Filtered Data
+            C->>C: Apply Field-Level Masking
+            C-->>U: Secured Response
+        else Permission Denied
+            M-->>U: 403 Access Denied
+        end
+    end
+```
+
+---
