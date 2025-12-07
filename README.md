@@ -151,3 +151,36 @@ sequenceDiagram
 ```
 
 ---
+
+## Future Enhancement: Bulk Field Permission Configuration
+
+> **Status**: Design phase - not yet implemented
+
+When a resource has hundreds or thousands of columns, configuring field-level permissions individually becomes impractical.
+
+### Requirements
+
+Allow configuring field-level permissions using:
+
+| Selector Type | Description | Example |
+|---------------|-------------|---------|
+| `pattern` | Glob wildcard matching | `PII_*`, `*_encrypted`, `*_secret` |
+| `regex` | Regular expression | `^(SSN\|TaxId\|DOB).*` |
+| `prefix` | Fields starting with | `internal_` |
+| `suffix` | Fields ending with | `_hash` |
+| `in` | Include specific fields only | `SSN,DOB,TaxId` |
+| `notIn` | Exclude specific fields (all others included) | `SSN,DOB,InternalNotes` |
+
+### Challenges
+
+1. **Runtime Performance** - Evaluating patterns at request time is O(fields × permissions × pattern_complexity). Not scalable for thousands of columns.
+
+2. **UI Display** - If patterns are expanded to individual rows for fast runtime lookup, how do we display the original pattern/intent back to the admin?
+
+3. **Re-expansion** - When fields are added/removed from a resource, should existing `notIn` patterns auto-update to include new fields?
+
+4. **Conflict Resolution** - How to handle multiple patterns that match the same field with different subjects or access levels?
+
+5. **Storage Trade-off** - Pre-expanding patterns means potentially thousands of Permission rows per configuration.
+
+---
