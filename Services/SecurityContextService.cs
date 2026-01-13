@@ -11,6 +11,11 @@ public class SecurityContextService : ISecurityContextService
         _securityContext.RowLevelSecurityRules.Add(rule);
     }
 
+    public void SetRowLevelSecurityRuleGroup(RowLevelSecurityRuleGroup ruleGroup)
+    {
+        _securityContext.RowLevelSecurityRuleGroup = ruleGroup;
+    }
+
     public void AddFieldAccess(FieldAccessRule rule)
     {
         // Remove existing rule for same field if exists
@@ -38,6 +43,7 @@ public class SecurityContextService : ISecurityContextService
     public void Clear()
     {
         _securityContext.RowLevelSecurityRules.Clear();
+        _securityContext.RowLevelSecurityRuleGroup = null;
         _securityContext.FieldAccessRules.Clear();
         _securityContext.HasFieldLevelSecurity = false;
     }

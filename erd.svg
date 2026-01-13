@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 500">
+  <defs>
+    <style>
+      .entity-box { fill: #f8f9fa; stroke: #333; stroke-width: 2; }
+      .header-box { fill: #e9ecef; stroke: #333; stroke-width: 2; }
+      .text { font-family: 'Courier New', monospace; font-size: 12px; fill: #333; }
+      .header-text { font-weight: bold; font-size: 13px; }
+      .arrow { stroke: #333; stroke-width: 1.5; marker-end: url(#arrowhead); fill: none; }
+      .arrow-label { font-family: 'Courier New', monospace; font-size: 10px; fill: #666; }
+    </style>
+    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#333" />
+    </marker>
+  </defs>
+
+  <!-- Policy Entity -->
+  <g transform="translate(50, 50)">
+    <rect x="0" y="0" width="180" height="120" class="entity-box" />
+    <rect x="0" y="0" width="180" height="25" class="header-box" />
+    <text x="90" y="18" class="text header-text" text-anchor="middle">Policy</text>
+    <line x1="0" y1="25" x2="180" y2="25" stroke="#333" stroke-width="1" />
+    <text x="10" y="45" class="text">Id</text>
+    <text x="10" y="65" class="text">Description</text>
+    <text x="10" y="85" class="text">PolicyData</text>
+    <text x="10" y="105" class="text">(JSON)</text>
+  </g>
+
+  <!-- Permission Entity -->
+  <g transform="translate(350, 50)">
+    <rect x="0" y="0" width="200" height="150" class="entity-box" />
+    <rect x="0" y="0" width="200" height="25" class="header-box" />
+    <text x="100" y="18" class="text header-text" text-anchor="middle">Permission</text>
+    <line x1="0" y1="25" x2="200" y2="25" stroke="#333" stroke-width="1" />
+    <text x="10" y="45" class="text">SubjectId</text>
+    <text x="10" y="65" class="text">SubjectType</text>
+    <text x="10" y="85" class="text">ResourceType</text>
+    <text x="10" y="105" class="text">ResourceId</text>
+    <text x="10" y="125" class="text">FieldName</text>
+  </g>
+
+  <!-- Resource Entity -->
+  <g transform="translate(650, 50)">
+    <rect x="0" y="0" width="180" height="100" class="entity-box" />
+    <rect x="0" y="0" width="180" height="25" class="header-box" />
+    <text x="90" y="18" class="text header-text" text-anchor="middle">Resource</text>
+    <line x1="0" y1="25" x2="180" y2="25" stroke="#333" stroke-width="1" />
+    <text x="10" y="45" class="text">Id</text>
+    <text x="10" y="65" class="text">ResourceName</text>
+    <text x="10" y="85" class="text">Description</text>
+  </g>
+
+  <!-- Field Entity -->
+  <g transform="translate(650, 300)">
+    <rect x="0" y="0" width="180" height="120" class="entity-box" />
+    <rect x="0" y="0" width="180" height="25" class="header-box" />
+    <text x="90" y="18" class="text header-text" text-anchor="middle">Field</text>
+    <line x1="0" y1="25" x2="180" y2="25" stroke="#333" stroke-width="1" />
+    <text x="10" y="45" class="text">Id</text>
+    <text x="10" y="65" class="text">FieldName</text>
+    <text x="10" y="85" class="text">MaskFormat</text>
+    <text x="10" y="105" class="text">ResourceId</text>
+  </g>
+
+  <!-- Arrow from Permission.SubjectId to Policy.Id -->
+  <path d="M 350 70 L 230 70" class="arrow" />
+  <text x="290" y="65" class="arrow-label" text-anchor="middle">SubjectId</text>
+
+  <!-- Arrow from Permission.ResourceId to Resource.Id -->
+  <path d="M 550 110 L 650 70" class="arrow" />
+  <text x="600" y="95" class="arrow-label" text-anchor="middle">ResourceId</text>
+
+  <!-- Arrow from Resource.Id to Field.ResourceId -->
+  <path d="M 740 150 L 740 300" class="arrow" />
+  <text x="750" y="225" class="arrow-label" text-anchor="middle">ResourceId</text>
+</svg>

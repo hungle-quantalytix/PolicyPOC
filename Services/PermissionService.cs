@@ -344,18 +344,52 @@ public class PermissionService : IPermissionService
         ClaimsPrincipal user,
         ISecurityContextService securityContext)
     {
-        return rule switch
+        // First, collect all RLS rules from the policy
+        var rlsRuleCollector = new List<RowLevelSecurityRuleBase>();
+        
+        bool matches = rule switch
         {
-            ComparisonRule comparison => await EvaluateComparisonRuleAsync(comparison, user, securityContext),
-            PolicyGroup group => await EvaluatePolicyGroupAsync(group, user, securityContext),
+            ComparisonRule comparison => await EvaluateComparisonRuleAsync(comparison, user, securityContext, rlsRuleCollector),
+            PolicyGroup group => await EvaluatePolicyGroupAsync(group, user, securityContext, rlsRuleCollector),
             _ => false
         };
+        
+        // If we collected RLS rules and the policy matched, set them as a rule group
+        if (matches && rlsRuleCollector.Any())
+        {
+            // If there's only one rule, just set it directly
+            if (rlsRuleCollector.Count == 1 && rlsRuleCollector[0] is RowLevelSecurityRuleGroup singleGroup)
+            {
+                securityContext.SetRowLevelSecurityRuleGroup(singleGroup);
+            }
+            else if (rlsRuleCollector.Count == 1 && rlsRuleCollector[0] is RowLevelSecurityComparisonRule singleComparison)
+            {
+                // Wrap single comparison in a group for consistency
+                securityContext.SetRowLevelSecurityRuleGroup(new RowLevelSecurityRuleGroup
+                {
+                    Condition = "AND",
+                    Rules = new List<RowLevelSecurityRuleBase> { singleComparison }
+                });
+            }
+            else
+            {
+                // Multiple rules at root level - combine with AND
+                securityContext.SetRowLevelSecurityRuleGroup(new RowLevelSecurityRuleGroup
+                {
+                    Condition = "AND",
+                    Rules = rlsRuleCollector
+                });
+            }
+        }
+        
+        return matches;
     }
 
     private async Task<bool> EvaluatePolicyGroupAsync(
         PolicyGroup policyGroup,
         ClaimsPrincipal user,
-        ISecurityContextService securityContext)
+        ISecurityContextService securityContext,
+        List<RowLevelSecurityRuleBase>? rlsRuleCollector = null)
     {
         if (policyGroup.Condition == null)
             throw new InvalidOperationException("PolicyGroup.Condition must not be null.");
@@ -368,15 +402,50 @@ public class PermissionService : IPermissionService
         };
         
         bool isAllowed = isAnd;
+        var groupRlsRules = new List<RowLevelSecurityRuleBase>();
 
         foreach (var rule in policyGroup.Rules)
         {
-            bool result = await EvaluatePolicyRulesAsync(rule, user, securityContext);
+            var ruleRlsCollector = new List<RowLevelSecurityRuleBase>();
+            bool result = rule switch
+            {
+                ComparisonRule comparison => await EvaluateComparisonRuleAsync(comparison, user, securityContext, ruleRlsCollector),
+                PolicyGroup group => await EvaluatePolicyGroupAsync(group, user, securityContext, ruleRlsCollector),
+                _ => false
+            };
 
             if (isAnd && !result) return false;  // AND short-circuit
-            if (!isAnd && result) return true;   // OR short-circuit
+            if (!isAnd && result)
+            {
+                // For OR, if this rule passes, collect its RLS rules
+                groupRlsRules.AddRange(ruleRlsCollector);
+                isAllowed = true;
+                // Don't return early - we need to evaluate all rules for RLS collection
+            }
+            else if (isAnd && result)
+            {
+                // For AND, collect RLS rules if rule passes
+                groupRlsRules.AddRange(ruleRlsCollector);
+            }
 
             isAllowed = isAnd ? (isAllowed && result) : (isAllowed || result);
+        }
+
+        // If we collected RLS rules, wrap them in a group
+        if (isAllowed && groupRlsRules.Any() && rlsRuleCollector != null)
+        {
+            if (groupRlsRules.Count == 1)
+            {
+                rlsRuleCollector.Add(groupRlsRules[0]);
+            }
+            else
+            {
+                rlsRuleCollector.Add(new RowLevelSecurityRuleGroup
+                {
+                    Condition = policyGroup.Condition.ToUpper(),
+                    Rules = groupRlsRules
+                });
+            }
         }
 
         return isAllowed;
@@ -385,7 +454,8 @@ public class PermissionService : IPermissionService
     private async Task<bool> EvaluateComparisonRuleAsync(
         ComparisonRule comparisonRule,
         ClaimsPrincipal user,
-        ISecurityContextService securityContext)
+        ISecurityContextService securityContext,
+        List<RowLevelSecurityRuleBase>? rlsRuleCollector = null)
     {
         // Standard policy rule: user.* fields
         if (comparisonRule.Field.StartsWith("user.", StringComparison.OrdinalIgnoreCase))
@@ -419,7 +489,18 @@ public class PermissionService : IPermissionService
                 resolvedValue = await GetUserFieldValueAsync(comparisonRule.Value, user);
             }
             
-            // Add to security context for data layer filtering
+            // Collect RLS rule for the new structure
+            if (rlsRuleCollector != null)
+            {
+                rlsRuleCollector.Add(new RowLevelSecurityComparisonRule
+                {
+                    ResourceField = resourceField,
+                    Operator = comparisonRule.Operator,
+                    Value = resolvedValue
+                });
+            }
+            
+            // Also add to old structure for backward compatibility
             securityContext.AddRowLevelSecurityRule(new RowLevelSecurityRule
             {
                 ResourceField = resourceField,

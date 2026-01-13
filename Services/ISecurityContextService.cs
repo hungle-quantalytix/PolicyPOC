@@ -4,6 +4,7 @@ public interface ISecurityContextService
 {
     SecurityContext SecurityContext { get; }
     void AddRowLevelSecurityRule(RowLevelSecurityRule rule);
+    void SetRowLevelSecurityRuleGroup(RowLevelSecurityRuleGroup ruleGroup);
     void AddFieldAccess(FieldAccessRule rule);
     void Clear();
     
@@ -17,11 +18,48 @@ public class SecurityContext
     public List<RowLevelSecurityRule> RowLevelSecurityRules { get; set; } = new();
     public List<FieldAccessRule> FieldAccessRules { get; set; } = new();
     
+    // Advanced row-level security with AND/OR logic
+    public RowLevelSecurityRuleGroup? RowLevelSecurityRuleGroup { get; set; }
+    
     // Flag to indicate if field-level security has been evaluated
     public bool HasFieldLevelSecurity { get; set; } = false;
 }
 
+/// <summary>
+/// Simple row-level security rule (backward compatible)
+/// </summary>
 public class RowLevelSecurityRule
+{
+    public required string ResourceField { get; set; }
+    public required string Operator { get; set; }
+    public required string Value { get; set; }
+}
+
+/// <summary>
+/// Base class for row-level security rules that support complex AND/OR logic
+/// </summary>
+public abstract class RowLevelSecurityRuleBase { }
+
+/// <summary>
+/// A group of row-level security rules combined with AND or OR logic
+/// </summary>
+public class RowLevelSecurityRuleGroup : RowLevelSecurityRuleBase
+{
+    /// <summary>
+    /// The logical operator: "AND" or "OR"
+    /// </summary>
+    public required string Condition { get; set; }
+    
+    /// <summary>
+    /// The rules in this group (can be ComparisonRules or nested RuleGroups)
+    /// </summary>
+    public required List<RowLevelSecurityRuleBase> Rules { get; set; }
+}
+
+/// <summary>
+/// A single comparison rule for row-level security
+/// </summary>
+public class RowLevelSecurityComparisonRule : RowLevelSecurityRuleBase
 {
     public required string ResourceField { get; set; }
     public required string Operator { get; set; }
